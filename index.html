@@ -227,6 +227,17 @@
   .no-plan-icon { font-size: 40px; margin-bottom: 16px; }
   .no-plan h2 { font-size: 18px; font-weight: 500; margin-bottom: 8px; }
   .no-plan p { font-size: 13px; color: var(--text-secondary); max-width: 320px; margin: 0 auto 20px; line-height: 1.7; }
+
+  /* ── MANAGE TAB ── */
+  .manage-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+  .manage-card { background: var(--bg-primary); border-radius: var(--radius-lg); border: 0.5px solid var(--border); padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .manage-card-header { display: flex; align-items: center; gap: 12px; }
+  .manage-avatar-lg { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 600; flex-shrink: 0; }
+  .manage-name { font-size: 15px; font-weight: 500; }
+  .manage-meta { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+  .manage-fields { display: flex; flex-direction: column; gap: 8px; }
+  .manage-field label { font-size: 10px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.04em; display: block; margin-bottom: 3px; }
+  .manage-actions { display: flex; gap: 8px; padding-top: 4px; border-top: 0.5px solid var(--border); }
 </style>
 </head>
 <body>
@@ -257,6 +268,7 @@
     <button class="nav-btn" onclick="showPage('metrics',this)">Metrics</button>
     <button class="nav-btn" onclick="showPage('import',this)">Import plan</button>
     <button class="nav-btn" onclick="showPage('strava',this)">Strava</button>
+    <button class="nav-btn" onclick="showPage('manage',this)">Manage</button>
   </div>
 
   <!-- PLAN -->
@@ -361,6 +373,12 @@
       <strong>What syncs once connected:</strong> activity name, date, average power or pace, normalized power, average HR, TSS, and IF. Each activity is automatically matched to the closest scheduled workout.
     </div>
   </div>
+
+  <!-- MANAGE -->
+  <div id="page-manage" class="page">
+    <div class="manage-grid" id="manageGrid"></div>
+  </div>
+
 
 </div>
 
@@ -1001,6 +1019,110 @@ function confirmImport() {
   pendingImport = null;
 }
 
+
+// ─── MANAGE TAB ──────────────────────────────────────────────────────────────
+function renderManageTab() {
+  const grid = document.getElementById('manageGrid');
+  if (!grid) return;
+  if (appState.athletes.length === 0) {
+    grid.innerHTML = '<div class="empty">No athletes yet. Use "+ Add athlete" to create one.</div>';
+    return;
+  }
+  grid.innerHTML = appState.athletes.map(a => {
+    const ci = a.colorIdx || 0;
+    const initials = a.name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+    const sportLabels = {running:'Running',cycling:'Cycling / MTB',triathlon:'Triathlon',swimming:'Swimming',other:'Other'};
+    const workouts = a.weeks ? a.weeks.reduce((s,w)=>s+w.days.filter(d=>d.type!=='rest').length,0) : 0;
+    const done = a.completed ? a.completed.length : 0;
+    return `<div class="manage-card" id="mcard_${a.id}">
+      <div class="manage-card-header">
+        <div class="manage-avatar-lg" style="background:${AVATAR_COLORS[ci]};color:${AVATAR_TEXT[ci]}">${initials}</div>
+        <div>
+          <div class="manage-name">${a.name}</div>
+          <div class="manage-meta">${sportLabels[a.sport]||'Training'} · ${a.planName||'No plan'} · ${done}/${workouts} workouts</div>
+        </div>
+      </div>
+      <div class="manage-fields">
+        <div class="manage-field">
+          <label>Name</label>
+          <input class="log-input" id="mname_${a.id}" value="${a.name}" style="margin:0">
+        </div>
+        <div class="manage-field">
+          <label>Sport</label>
+          <select class="log-input" id="msport_${a.id}" style="margin:0">
+            <option value="running" ${a.sport==='running'?'selected':''}>Running</option>
+            <option value="cycling" ${a.sport==='cycling'?'selected':''}>Cycling / MTB</option>
+            <option value="triathlon" ${a.sport==='triathlon'?'selected':''}>Triathlon</option>
+            <option value="swimming" ${a.sport==='swimming'?'selected':''}>Swimming</option>
+            <option value="other" ${a.sport==='other'?'selected':''}>Other</option>
+          </select>
+        </div>
+        <div class="manage-field">
+          <label>Avatar color</label>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">
+            ${AVATAR_COLORS.map((c,i) => `<div onclick="setAthleteColor('${a.id}',${i},this)" style="width:24px;height:24px;border-radius:50%;background:${c};cursor:pointer;border:2px solid ${i===ci?'var(--text-primary)':'transparent'};transition:transform 0.1s" onmouseover="this.style.transform='scale(1.15)'" onmouseout="this.style.transform='scale(1)'"></div>`).join('')}
+          </div>
+        </div>
+      </div>
+      <div class="manage-actions">
+        <button class="btn primary" onclick="saveAthleteEdits('${a.id}')">Save changes</button>
+        <button class="btn danger" onclick="deleteAthlete('${a.id}')">Delete</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function setAthleteColor(id, colorIdx, el) {
+  // Update UI immediately
+  const card = document.getElementById('mcard_' + id);
+  card.querySelectorAll('[onclick^="setAthleteColor"]').forEach(d => d.style.border = '2px solid transparent');
+  el.style.border = '2px solid var(--text-primary)';
+  // Store on element for save
+  el.closest('.manage-card').dataset.pendingColor = colorIdx;
+  // Update avatar preview
+  const avatar = card.querySelector('.manage-avatar-lg');
+  const initials = avatar.textContent;
+  avatar.style.background = AVATAR_COLORS[colorIdx];
+  avatar.style.color = AVATAR_TEXT[colorIdx];
+}
+
+function saveAthleteEdits(id) {
+  const a = appState.athletes.find(x => x.id === id);
+  if (!a) return;
+  const name = document.getElementById('mname_' + id).value.trim();
+  const sport = document.getElementById('msport_' + id).value;
+  if (!name) { alert('Name cannot be empty.'); return; }
+  const card = document.getElementById('mcard_' + id);
+  const pendingColor = card.dataset.pendingColor;
+  a.name = name;
+  a.sport = sport;
+  if (pendingColor !== undefined) a.colorIdx = parseInt(pendingColor);
+  saveAppState();
+  renderAthleteBar();
+  renderManageTab();
+  if (appState.currentAthleteId === id) renderHeaderForAthlete();
+}
+
+function deleteAthlete(id) {
+  const a = appState.athletes.find(x => x.id === id);
+  if (!a) return;
+  if (!confirm(`Delete "${a.name}" and all their data? This cannot be undone.`)) return;
+  appState.athletes = appState.athletes.filter(x => x.id !== id);
+  if (appState.currentAthleteId === id) {
+    appState.currentAthleteId = appState.athletes.length > 0 ? appState.athletes[0].id : null;
+  }
+  saveAppState();
+  renderAthleteBar();
+  renderManageTab();
+  if (appState.currentAthleteId) {
+    selectAthlete(appState.currentAthleteId);
+  } else {
+    document.getElementById('headerName').textContent = 'Training Hub';
+    document.getElementById('headerSub').textContent = 'Select or create an athlete to get started';
+    document.getElementById('page-plan').innerHTML = '<div class="no-plan"><div class="no-plan-icon">&#128100;</div><h2>No athletes yet</h2><p>Create an athlete profile to get started.</p><button class="btn primary" onclick="openNewAthleteModal()">Add athlete</button></div>';
+  }
+}
+
 // ─── STRAVA ──────────────────────────────────────────────────────────────────
 function saveClientId() {
   const a = currentAthlete();
@@ -1026,6 +1148,7 @@ function showPage(id, btn) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('page-' + id).classList.add('active');
   if (btn) btn.classList.add('active');
+  if (id === 'manage') renderManageTab();
 }
 
 // ─── SEED: import existing MTB plan for the son ──────────────────────────────
