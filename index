@@ -1,0 +1,1310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Training Hub</title>
+<style>
+  :root {
+    --bg-primary: #ffffff;
+    --bg-secondary: #f5f5f3;
+    --bg-tertiary: #eeede9;
+    --text-primary: #1a1a1a;
+    --text-secondary: #6b6b68;
+    --text-tertiary: #999894;
+    --border: rgba(0,0,0,0.12);
+    --border-md: rgba(0,0,0,0.2);
+    --radius: 8px;
+    --radius-lg: 12px;
+    --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --strava: #FC4C02;
+    --accent: #1a1a1a;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg-primary: #1c1c1a;
+      --bg-secondary: #252523;
+      --bg-tertiary: #2e2e2b;
+      --text-primary: #f0efe9;
+      --text-secondary: #9e9d97;
+      --text-tertiary: #6b6b68;
+      --border: rgba(255,255,255,0.1);
+      --border-md: rgba(255,255,255,0.18);
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--font); font-size: 14px; color: var(--text-primary); background: var(--bg-tertiary); }
+  .container { max-width: 960px; margin: 0 auto; padding: 20px 16px; }
+
+  /* ── ATHLETE SELECTOR ── */
+  .athlete-bar { background: var(--bg-primary); border-radius: var(--radius-lg); border: 0.5px solid var(--border); padding: 10px 14px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .athlete-chip { display: flex; align-items: center; gap: 7px; padding: 6px 12px; border-radius: 100px; border: 0.5px solid var(--border-md); background: none; cursor: pointer; font-size: 13px; color: var(--text-secondary); font-family: var(--font); transition: all 0.15s; }
+  .athlete-chip:hover { background: var(--bg-secondary); }
+  .athlete-chip.active { background: var(--text-primary); color: var(--bg-primary); border-color: var(--text-primary); }
+  .athlete-avatar { width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 600; flex-shrink: 0; }
+  .athlete-chip.active .athlete-avatar { filter: invert(1); }
+  .add-athlete-btn { padding: 6px 12px; border-radius: 100px; border: 0.5px dashed var(--border-md); background: none; cursor: pointer; font-size: 12px; color: var(--text-tertiary); font-family: var(--font); margin-left: auto; }
+  .add-athlete-btn:hover { color: var(--text-primary); border-color: var(--text-primary); }
+
+  header { background: var(--bg-primary); border-radius: var(--radius-lg); border: 0.5px solid var(--border); padding: 16px 20px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .header-left h1 { font-size: 18px; font-weight: 500; }
+  .header-left p { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+  .sport-badge { font-size: 11px; padding: 3px 10px; border-radius: 20px; font-weight: 500; }
+  .strava-bar { display: flex; align-items: center; gap: 8px; }
+  .strava-dot { width: 8px; height: 8px; border-radius: 50%; background: #ccc; flex-shrink: 0; }
+  .strava-dot.on { background: var(--strava); }
+  .strava-status-text { font-size: 12px; color: var(--text-secondary); }
+  .btn { padding: 7px 14px; font-size: 12px; font-weight: 500; border-radius: var(--radius); border: 0.5px solid var(--border-md); background: none; cursor: pointer; color: var(--text-primary); font-family: var(--font); transition: background 0.1s; }
+  .btn:hover { background: var(--bg-secondary); }
+  .btn.strava { color: var(--strava); border-color: var(--strava); }
+  .btn.primary { background: var(--text-primary); color: var(--bg-primary); border-color: var(--text-primary); }
+  .btn.primary:hover { opacity: 0.85; }
+  .btn.danger { color: #993556; border-color: #993556; }
+
+  .nav { display: flex; gap: 4px; background: var(--bg-primary); border-radius: var(--radius-lg); border: 0.5px solid var(--border); padding: 6px; margin-bottom: 16px; }
+  .nav-btn { flex: 1; padding: 8px; font-size: 13px; cursor: pointer; color: var(--text-secondary); border-radius: var(--radius); background: none; border: none; font-family: var(--font); text-align: center; }
+  .nav-btn.active { background: var(--bg-secondary); color: var(--text-primary); font-weight: 500; }
+
+  .page { display: none; }
+  .page.active { display: block; }
+  .card { background: var(--bg-primary); border-radius: var(--radius-lg); border: 0.5px solid var(--border); padding: 16px; margin-bottom: 12px; }
+
+  /* ── PLAN VIEW ── */
+  .phase-header { display: flex; align-items: center; gap: 10px; margin: 20px 0 10px; }
+  .phase-pill { font-size: 11px; font-weight: 500; padding: 3px 10px; border-radius: 20px; }
+  .phase-title { font-size: 15px; font-weight: 500; }
+  .phase-weeks { font-size: 12px; color: var(--text-secondary); margin-left: auto; }
+  .week-block { margin-bottom: 12px; }
+  .week-label { font-size: 11px; font-weight: 500; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; padding: 0 2px; }
+  .day-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+  .day-cell { border-radius: var(--radius); padding: 7px 6px; min-height: 70px; cursor: pointer; border: 0.5px solid transparent; transition: opacity 0.15s, transform 0.1s; }
+  .day-cell:hover { opacity: 0.82; transform: translateY(-1px); }
+  .day-name { font-size: 9px; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 3px; font-weight: 500; }
+  .day-type { font-size: 11px; font-weight: 500; line-height: 1.3; margin-bottom: 2px; }
+  .day-detail { font-size: 10px; line-height: 1.4; }
+  .done-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--strava); margin-top: 4px; }
+  .t-rest { background: var(--bg-secondary); }
+  .t-rest .day-name, .t-rest .day-type { color: var(--text-tertiary); } .t-rest .day-detail { color: var(--text-tertiary); }
+  .t-endurance { background: #E6F1FB; border-color: #B5D4F4 !important; } .t-endurance .day-name, .t-endurance .day-type { color: #0C447C; } .t-endurance .day-detail { color: #185FA5; }
+  .t-intervals { background: #EAF3DE; border-color: #C0DD97 !important; } .t-intervals .day-name, .t-intervals .day-type { color: #27500A; } .t-intervals .day-detail { color: #3B6D11; }
+  .t-tempo { background: #FAEEDA; border-color: #FAC775 !important; } .t-tempo .day-name, .t-tempo .day-type { color: #412402; } .t-tempo .day-detail { color: #854F0B; }
+  .t-recovery { background: #F1EFE8; border-color: #D3D1C7 !important; } .t-recovery .day-name, .t-recovery .day-type { color: #444441; } .t-recovery .day-detail { color: #5F5E5A; }
+  .t-strength { background: #EEEDFE; border-color: #CECBF6 !important; } .t-strength .day-name, .t-strength .day-type { color: #26215C; } .t-strength .day-detail { color: #534AB7; }
+  .t-test { background: #FBEAF0; border-color: #F4C0D1 !important; } .t-test .day-name, .t-test .day-type { color: #4B1528; } .t-test .day-detail { color: #993556; }
+  .t-race { background: #FAECE7; border-color: #F5C4B3 !important; } .t-race .day-name, .t-race .day-type { color: #4A1B0C; } .t-race .day-detail { color: #993C1D; }
+  .t-long { background: #E1F5EE; border-color: #9FE1CB !important; } .t-long .day-name, .t-long .day-type { color: #085041; } .t-long .day-detail { color: #0F6E56; }
+  @media (prefers-color-scheme: dark) {
+    .t-endurance { background: #0C2540; border-color: #185FA5 !important; } .t-endurance .day-name, .t-endurance .day-type { color: #B5D4F4; } .t-endurance .day-detail { color: #85B7EB; }
+    .t-intervals { background: #173404; border-color: #3B6D11 !important; } .t-intervals .day-name, .t-intervals .day-type { color: #C0DD97; } .t-intervals .day-detail { color: #97C459; }
+    .t-tempo { background: #2A1800; border-color: #854F0B !important; } .t-tempo .day-name, .t-tempo .day-type { color: #FAC775; } .t-tempo .day-detail { color: #EF9F27; }
+    .t-recovery { background: #2C2C2A; border-color: #5F5E5A !important; } .t-recovery .day-name, .t-recovery .day-type { color: #D3D1C7; } .t-recovery .day-detail { color: #B4B2A9; }
+    .t-strength { background: #1A1640; border-color: #533AB7 !important; } .t-strength .day-name, .t-strength .day-type { color: #CECBF6; } .t-strength .day-detail { color: #AFA9EC; }
+    .t-test { background: #280B18; border-color: #993556 !important; } .t-test .day-name, .t-test .day-type { color: #F4C0D1; } .t-test .day-detail { color: #ED93B1; }
+    .t-race { background: #2A1000; border-color: #993C1D !important; } .t-race .day-name, .t-race .day-type { color: #F5C4B3; } .t-race .day-detail { color: #F0997B; }
+    .t-long { background: #04342C; border-color: #0F6E56 !important; } .t-long .day-name, .t-long .day-type { color: #9FE1CB; } .t-long .day-detail { color: #5DCAA5; }
+  }
+
+  /* ── MODAL ── */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 200; align-items: center; justify-content: center; padding: 20px; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--bg-primary); border-radius: var(--radius-lg); border: 0.5px solid var(--border); padding: 20px; max-width: 540px; width: 100%; max-height: 90vh; overflow-y: auto; }
+  .modal-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; gap: 12px; }
+  .modal-title { font-size: 16px; font-weight: 500; }
+  .modal-sub { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+  .modal-close { background: none; border: none; cursor: pointer; color: var(--text-secondary); font-size: 20px; line-height: 1; padding: 0; font-family: var(--font); }
+  .wo-bar { display: flex; height: 22px; border-radius: var(--radius); overflow: hidden; margin-bottom: 14px; }
+  .wo-seg { display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 500; }
+  .wo-block { border-radius: var(--radius); padding: 10px 12px; margin-bottom: 6px; display: flex; gap: 10px; align-items: flex-start; }
+  .wo-block-body { flex: 1; }
+  .wo-block-label { font-size: 12px; font-weight: 500; margin-bottom: 2px; }
+  .wo-block-detail { font-size: 12px; line-height: 1.5; }
+  .wo-block-time { font-size: 17px; font-weight: 500; white-space: nowrap; min-width: 50px; text-align: right; flex-shrink: 0; }
+  .wo-warmup { background: #E6F1FB; } .wo-warmup .wo-block-label { color: #0C447C; } .wo-warmup .wo-block-time, .wo-warmup .wo-block-detail { color: #185FA5; }
+  .wo-ss { background: #FAEEDA; } .wo-ss .wo-block-label { color: #412402; } .wo-ss .wo-block-time, .wo-ss .wo-block-detail { color: #854F0B; }
+  .wo-rest { background: #EAF3DE; } .wo-rest .wo-block-label { color: #27500A; } .wo-rest .wo-block-time, .wo-rest .wo-block-detail { color: #3B6D11; }
+  .wo-cooldown { background: #F1EFE8; } .wo-cooldown .wo-block-label { color: #444441; } .wo-cooldown .wo-block-time, .wo-cooldown .wo-block-detail { color: #5F5E5A; }
+  .wo-vo2 { background: #EEEDFE; } .wo-vo2 .wo-block-label { color: #26215C; } .wo-vo2 .wo-block-time, .wo-vo2 .wo-block-detail { color: #534AB7; }
+  .wo-long { background: #E1F5EE; } .wo-long .wo-block-label { color: #085041; } .wo-long .wo-block-time, .wo-long .wo-block-detail { color: #0F6E56; }
+  @media (prefers-color-scheme: dark) {
+    .wo-warmup { background: #0C2540; } .wo-warmup .wo-block-label { color: #B5D4F4; } .wo-warmup .wo-block-time, .wo-warmup .wo-block-detail { color: #85B7EB; }
+    .wo-ss { background: #2A1800; } .wo-ss .wo-block-label { color: #FAC775; } .wo-ss .wo-block-time, .wo-ss .wo-block-detail { color: #EF9F27; }
+    .wo-rest { background: #173404; } .wo-rest .wo-block-label { color: #C0DD97; } .wo-rest .wo-block-time, .wo-rest .wo-block-detail { color: #97C459; }
+    .wo-cooldown { background: #2C2C2A; } .wo-cooldown .wo-block-label { color: #D3D1C7; } .wo-cooldown .wo-block-time, .wo-cooldown .wo-block-detail { color: #B4B2A9; }
+    .wo-vo2 { background: #1A1640; } .wo-vo2 .wo-block-label { color: #CECBF6; } .wo-vo2 .wo-block-time, .wo-vo2 .wo-block-detail { color: #AFA9EC; }
+    .wo-long { background: #04342C; } .wo-long .wo-block-label { color: #9FE1CB; } .wo-long .wo-block-time, .wo-long .wo-block-detail { color: #5DCAA5; }
+  }
+  .tip-box { background: var(--bg-secondary); border-radius: var(--radius); padding: 10px 12px; font-size: 12px; color: var(--text-secondary); line-height: 1.6; margin-top: 8px; }
+  .tip-box strong { color: var(--text-primary); font-weight: 500; }
+  .log-section { margin-top: 16px; border-top: 0.5px solid var(--border); padding-top: 16px; }
+  .log-title { font-size: 13px; font-weight: 500; margin-bottom: 10px; }
+  .log-input { width: 100%; padding: 8px 10px; border-radius: var(--radius); border: 0.5px solid var(--border-md); background: var(--bg-primary); font-size: 13px; color: var(--text-primary); font-family: var(--font); margin-bottom: 8px; }
+  .log-input::placeholder { color: var(--text-tertiary); }
+  .log-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+  .log-field label { font-size: 10px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.04em; display: block; margin-bottom: 3px; }
+  .logged-entry { background: var(--bg-secondary); border-radius: var(--radius); padding: 10px 12px; margin-top: 8px; }
+  .logged-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+  .logged-name { font-size: 13px; font-weight: 500; }
+  .logged-date { font-size: 11px; color: var(--text-tertiary); }
+  .logged-metrics { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--text-secondary); }
+  .logged-metrics span { font-weight: 500; color: var(--text-primary); }
+
+  /* ── ZONES / METRICS ── */
+  .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 20px; }
+  .metric-card { background: var(--bg-secondary); border-radius: var(--radius); padding: 14px; text-align: center; }
+  .metric-val { font-size: 24px; font-weight: 500; }
+  .metric-lbl { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+  .progress-wrap { background: var(--bg-secondary); border-radius: var(--radius-lg); padding: 14px 16px; margin-bottom: 16px; }
+  .progress-label-row { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 8px; }
+  .progress-track { background: var(--bg-tertiary); border-radius: 20px; height: 8px; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 20px; background: var(--strava); transition: width 0.4s; }
+  .ftp-row { display: flex; align-items: center; gap: 10px; background: var(--bg-secondary); border-radius: var(--radius); padding: 12px 14px; margin-bottom: 16px; flex-wrap: wrap; }
+  .ftp-row label { font-size: 13px; color: var(--text-secondary); flex: 1; min-width: 120px; }
+  .ftp-row input { width: 80px; padding: 7px 8px; border-radius: var(--radius); border: 0.5px solid var(--border-md); background: var(--bg-primary); font-size: 15px; font-weight: 500; color: var(--text-primary); font-family: var(--font); text-align: center; }
+  .ftp-history { margin-top: 12px; }
+  .ftp-entry { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 0.5px solid var(--border); font-size: 13px; }
+  .ftp-entry:last-child { border-bottom: none; }
+  .ftp-delta { font-size: 11px; padding: 2px 7px; border-radius: 20px; }
+  .ftp-delta.up { background: #EAF3DE; color: #27500A; }
+  .ftp-delta.same { background: var(--bg-tertiary); color: var(--text-tertiary); }
+  .zone-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .zone-table th { text-align: left; padding: 6px 8px; border-bottom: 0.5px solid var(--border); font-weight: 500; font-size: 11px; color: var(--text-secondary); }
+  .zone-table td { padding: 8px; border-bottom: 0.5px solid var(--border); }
+  .zone-pill { padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 500; display: inline-block; }
+  .activity-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 0.5px solid var(--border); }
+  .activity-row:last-child { border-bottom: none; }
+  .activity-info { flex: 1; }
+  .activity-name { font-size: 13px; font-weight: 500; }
+  .activity-meta { font-size: 11px; color: var(--text-secondary); margin-top: 1px; }
+  .badge { font-size: 10px; padding: 2px 8px; border-radius: 20px; background: #EAF3DE; color: #27500A; white-space: nowrap; }
+  @media (prefers-color-scheme: dark) { .badge { background: #173404; color: #C0DD97; } }
+  .section-heading { font-size: 13px; font-weight: 500; margin: 16px 0 10px; color: var(--text-primary); }
+  .empty { text-align: center; padding: 40px 20px; color: var(--text-tertiary); font-size: 13px; line-height: 1.7; }
+
+  /* ── IMPORT ── */
+  .import-wrap { background: var(--bg-primary); border-radius: var(--radius-lg); border: 0.5px solid var(--border); padding: 20px; margin-bottom: 12px; }
+  .import-wrap h3 { font-size: 15px; font-weight: 500; margin-bottom: 6px; }
+  .import-wrap p { font-size: 13px; color: var(--text-secondary); line-height: 1.7; margin-bottom: 12px; }
+  .import-textarea { width: 100%; min-height: 160px; padding: 10px 12px; border-radius: var(--radius); border: 0.5px solid var(--border-md); background: var(--bg-secondary); font-size: 12px; color: var(--text-primary); font-family: var(--font); resize: vertical; line-height: 1.6; margin-bottom: 10px; }
+  .import-textarea::placeholder { color: var(--text-tertiary); }
+  .import-status { font-size: 12px; color: var(--text-secondary); padding: 10px 12px; background: var(--bg-secondary); border-radius: var(--radius); min-height: 42px; line-height: 1.6; white-space: pre-wrap; }
+  .import-status.success { color: #27500A; background: #EAF3DE; }
+  .import-status.error { color: #993056; background: #FBEAF0; }
+  @media (prefers-color-scheme: dark) {
+    .import-status.success { color: #C0DD97; background: #173404; }
+    .import-status.error { color: #F4C0D1; background: #280B18; }
+  }
+  .example-plans { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+  .example-btn { font-size: 11px; padding: 4px 10px; border-radius: 20px; border: 0.5px solid var(--border-md); background: none; cursor: pointer; color: var(--text-secondary); font-family: var(--font); }
+  .example-btn:hover { background: var(--bg-secondary); color: var(--text-primary); }
+
+  /* ── NEW ATHLETE MODAL ── */
+  .color-swatches { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0 14px; }
+  .color-swatch { width: 28px; height: 28px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: transform 0.1s; }
+  .color-swatch:hover, .color-swatch.selected { transform: scale(1.15); border-color: var(--text-primary); }
+
+  /* ── STRAVA ── */
+  .strava-setup { background: var(--bg-secondary); border-radius: var(--radius-lg); padding: 20px; margin-bottom: 16px; }
+  .strava-setup h3 { font-size: 15px; font-weight: 500; margin-bottom: 8px; }
+  .strava-setup p { font-size: 13px; color: var(--text-secondary); line-height: 1.7; margin-bottom: 12px; }
+  .strava-setup ol { font-size: 13px; color: var(--text-secondary); line-height: 2; padding-left: 18px; margin-bottom: 14px; }
+  .strava-setup a { color: var(--strava); }
+
+  @media (max-width: 600px) {
+    .day-grid { gap: 3px; }
+    .day-cell { min-height: 56px; padding: 5px 4px; }
+    .day-type { font-size: 10px; }
+    .day-detail { display: none; }
+    .header-left h1 { font-size: 15px; }
+    .strava-status-text { display: none; }
+  }
+
+  /* ── AI LOADING ── */
+  .ai-spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--border-md); border-top-color: var(--text-primary); border-radius: 50%; animation: spin 0.6s linear infinite; vertical-align: middle; margin-right: 6px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── NO PLAN STATE ── */
+  .no-plan { text-align: center; padding: 60px 20px; }
+  .no-plan-icon { font-size: 40px; margin-bottom: 16px; }
+  .no-plan h2 { font-size: 18px; font-weight: 500; margin-bottom: 8px; }
+  .no-plan p { font-size: 13px; color: var(--text-secondary); max-width: 320px; margin: 0 auto 20px; line-height: 1.7; }
+
+  /* ── MANAGE TAB ── */
+  .manage-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+  .manage-card { background: var(--bg-primary); border-radius: var(--radius-lg); border: 0.5px solid var(--border); padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .manage-card-header { display: flex; align-items: center; gap: 12px; }
+  .manage-avatar-lg { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 600; flex-shrink: 0; }
+  .manage-name { font-size: 15px; font-weight: 500; }
+  .manage-meta { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+  .manage-fields { display: flex; flex-direction: column; gap: 8px; }
+  .manage-field label { font-size: 10px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.04em; display: block; margin-bottom: 3px; }
+  .manage-actions { display: flex; gap: 8px; padding-top: 4px; border-top: 0.5px solid var(--border); }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- ATHLETE BAR -->
+  <div class="athlete-bar" id="athleteBar">
+    <button class="add-athlete-btn" onclick="openNewAthleteModal()">+ Add athlete</button>
+  </div>
+
+  <!-- HEADER -->
+  <header id="mainHeader">
+    <div class="header-left">
+      <h1 id="headerName">Training Hub</h1>
+      <p id="headerSub">Select or create an athlete to get started</p>
+    </div>
+    <div class="strava-bar">
+      <div class="strava-dot" id="stravaDot"></div>
+      <span class="strava-status-text" id="stravaText">Strava not connected</span>
+      <button class="btn strava" id="stravaBtn" onclick="stravaAction()">Connect Strava</button>
+    </div>
+  </header>
+
+  <!-- NAV -->
+  <div class="nav">
+    <button class="nav-btn active" onclick="showPage('plan',this)">Plan</button>
+    <button class="nav-btn" onclick="showPage('zones',this)">Zones</button>
+    <button class="nav-btn" onclick="showPage('metrics',this)">Metrics</button>
+    <button class="nav-btn" onclick="showPage('import',this)">Import plan</button>
+    <button class="nav-btn" onclick="showPage('strava',this)">Strava</button>
+    <button class="nav-btn" onclick="showPage('manage',this)">Manage</button>
+  </div>
+
+  <!-- PLAN -->
+  <div id="page-plan" class="page active" style="padding-bottom:20px"></div>
+
+  <!-- ZONES -->
+  <div id="page-zones" class="page">
+    <div class="card">
+      <div class="ftp-row">
+        <label id="ftpLabel">Current FTP / pace baseline</label>
+        <input type="number" id="ftpInput" value="200" min="1" max="2000" oninput="updateZones()">
+        <button class="btn" onclick="saveFTP()">Save test result</button>
+      </div>
+      <div class="section-heading">Training zones</div>
+      <table class="zone-table" id="zoneTable"></table>
+    </div>
+    <div class="card">
+      <div class="section-heading">Fitness history</div>
+      <div id="ftpHistory"><div class="empty">No tests logged yet.</div></div>
+    </div>
+    <div class="tip-box" style="margin-top:0" id="zoneTip">Update baseline after each fitness test — zones recalculate automatically.</div>
+  </div>
+
+  <!-- METRICS -->
+  <div id="page-metrics" class="page">
+    <div class="metrics-grid" id="metricsGrid"></div>
+    <div class="progress-wrap">
+      <div class="progress-label-row">
+        <span style="color:var(--text-secondary);font-size:13px">Plan progress</span>
+        <span id="progressLabel" style="font-weight:500;font-size:13px">0 workouts</span>
+      </div>
+      <div class="progress-track"><div class="progress-fill" id="progressBar" style="width:0%"></div></div>
+    </div>
+    <div class="card">
+      <div class="section-heading">Logged activities</div>
+      <div id="activityList"><div class="empty">No activities yet.<br>Click any day on the plan to log a workout.</div></div>
+    </div>
+  </div>
+
+  <!-- IMPORT -->
+  <div id="page-import" class="page">
+    <div class="import-wrap">
+      <h3>Anthropic API key</h3>
+      <p>Required for AI parsing. Get a free key at <a href="https://console.anthropic.com/" target="_blank" style="color:var(--strava)">console.anthropic.com</a> → API Keys. Stored only in your browser.</p>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
+        <input class="log-input" id="apiKeyInput" type="password" placeholder="sk-ant-..." style="margin:0;flex:1;font-family:monospace">
+        <button class="btn primary" onclick="saveApiKey()">Save key</button>
+      </div>
+      <div id="apiKeyStatus" style="font-size:12px;color:var(--text-tertiary);margin-bottom:16px;padding:0 2px"></div>
+    </div>
+    <div class="import-wrap">
+      <h3>Import a training plan</h3>
+      <p>Paste any training plan — coach emails, text from a website, bullet points, a spreadsheet, or even rough notes. The AI will parse it into a structured weekly calendar for this athlete.</p>
+      <div class="example-plans">
+        <span style="font-size:11px;color:var(--text-tertiary);align-self:center">Examples:</span>
+        <button class="example-btn" onclick="fillExample('ultra')">Ultra marathon 18-week plan</button>
+        <button class="example-btn" onclick="fillExample('triathlon')">Sprint triathlon 8-week</button>
+        <button class="example-btn" onclick="fillExample('cycling')">Road cycling base block</button>
+      </div>
+      <textarea class="import-textarea" id="importText" placeholder="Paste your training plan here...&#10;&#10;Example:&#10;Week 1&#10;Mon — Rest&#10;Tue — Easy run 45 min&#10;Wed — Strength&#10;Thu — Tempo 6 miles @ 7:30/mi&#10;Fri — Rest&#10;Sat — Long run 14 miles&#10;Sun — Recovery jog 30 min"></textarea>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
+        <input class="log-input" id="importPlanName" placeholder="Plan name (e.g. Western States 100 2026)" style="margin:0;flex:1;min-width:180px">
+        <select class="log-input" id="importSport" style="margin:0;width:auto">
+          <option value="running">Running</option>
+          <option value="cycling">Cycling / MTB</option>
+          <option value="triathlon">Triathlon</option>
+          <option value="swimming">Swimming</option>
+          <option value="other">Other</option>
+        </select>
+        <button class="btn primary" onclick="importPlan()" id="importBtn">Parse with AI</button>
+      </div>
+      <div class="import-status" id="importStatus">Ready to parse. Click "Parse with AI" after pasting your plan.</div>
+    </div>
+    <div class="card" id="importPreview" style="display:none">
+      <div class="section-heading">Preview — parsed plan</div>
+      <div id="importPreviewContent"></div>
+      <div style="display:flex;gap:8px;margin-top:16px">
+        <button class="btn primary" onclick="confirmImport()">Load this plan</button>
+        <button class="btn" onclick="document.getElementById('importPreview').style.display='none'">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- STRAVA -->
+  <div id="page-strava" class="page">
+    <div class="strava-setup">
+      <h3>Connecting Strava</h3>
+      <p>Strava OAuth requires a registered app Client ID. Once connected, completed rides and runs sync automatically and populate real power, HR, and pace data.</p>
+      <ol>
+        <li>Go to <a href="https://www.strava.com/settings/api" target="_blank">strava.com/settings/api</a></li>
+        <li>Create an app — name it anything (e.g. "Training Hub")</li>
+        <li>Set Authorization Callback Domain to <strong>localhost</strong> for local use</li>
+        <li>Copy your <strong>Client ID</strong> and paste below</li>
+      </ol>
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <input class="log-input" id="clientIdInput" placeholder="Strava Client ID (numbers only)" style="margin:0;flex:1">
+        <button class="btn primary" onclick="saveClientId()">Save & connect</button>
+      </div>
+      <p style="font-size:12px;margin:0">Stored locally in your browser only — never sent anywhere except Strava's OAuth endpoint.</p>
+    </div>
+    <div class="tip-box">
+      <strong>What syncs once connected:</strong> activity name, date, average power or pace, normalized power, average HR, TSS, and IF. Each activity is automatically matched to the closest scheduled workout.
+    </div>
+  </div>
+
+  <!-- MANAGE -->
+  <div id="page-manage" class="page">
+    <div class="manage-grid" id="manageGrid"></div>
+  </div>
+
+
+</div>
+
+<!-- MODAL OVERLAY -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModalOutside(event)">
+  <div class="modal" id="modalContent"></div>
+</div>
+
+<!-- NEW ATHLETE MODAL -->
+<div class="modal-overlay" id="athleteModalOverlay" onclick="closeAthleteModalOutside(event)">
+  <div class="modal" id="athleteModalContent">
+    <div class="modal-header">
+      <div><div class="modal-title">Add athlete</div><div class="modal-sub">Each athlete gets their own plans, zones, and activity log</div></div>
+      <button class="modal-close" onclick="closeAthleteModal()">✕</button>
+    </div>
+    <div style="margin-bottom:12px">
+      <div class="log-field" style="margin-bottom:10px"><label>Name</label><input class="log-input" id="newAthleteName" placeholder="e.g. Alex" style="margin:0"></div>
+      <div class="log-field" style="margin-bottom:6px"><label>Sport / Focus</label>
+        <select class="log-input" id="newAthleteSport" style="margin:0">
+          <option value="running">Running</option>
+          <option value="cycling">Cycling / MTB</option>
+          <option value="triathlon">Triathlon</option>
+          <option value="swimming">Swimming</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="log-field"><label>Avatar color</label>
+        <div class="color-swatches" id="colorSwatches"></div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn primary" onclick="createAthlete()">Create athlete</button>
+      <button class="btn" onclick="closeAthleteModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── CONSTANTS ───────────────────────────────────────────────────────────────
+const AVATAR_COLORS = ['#B5D4F4','#C0DD97','#FAC775','#F4C0D1','#CECBF6','#9FE1CB','#F5C4B3','#D3D1C7'];
+const AVATAR_TEXT   = ['#0C447C','#27500A','#412402','#4B1528','#26215C','#085041','#4A1B0C','#444441'];
+let selectedColor = 0;
+
+const SEG_COLORS = {warmup:'#B5D4F4',ss:'#EF9F27',rest:'#97C459',cooldown:'#D3D1C7',vo2:'#AFA9EC',long:'#9FE1CB'};
+const SEG_TEXT   = {warmup:'#0C447C',ss:'#412402',rest:'#27500A',cooldown:'#444441',vo2:'#26215C',long:'#085041'};
+
+const ZONE_DEFS_CYCLING = [
+  {name:'Z1 — Recovery',pct:'< 55%',m:0,bg:'#F1EFE8',tc:'#444441'},
+  {name:'Z2 — Endurance',pct:'56–75%',m:0.56,bg:'#E6F1FB',tc:'#0C447C'},
+  {name:'Z3 — Tempo',pct:'76–87%',m:0.76,bg:'#EAF3DE',tc:'#27500A'},
+  {name:'Sweetspot',pct:'88–93%',m:0.88,bg:'#FAEEDA',tc:'#412402'},
+  {name:'Z4 — Threshold',pct:'94–105%',m:0.94,bg:'#FAECE7',tc:'#4A1B0C'},
+  {name:'Z5 — VO2max',pct:'106–120%',m:1.06,bg:'#EEEDFE',tc:'#26215C'},
+  {name:'Z6 — Anaerobic',pct:'> 120%',m:1.21,bg:'#FBEAF0',tc:'#4B1528'},
+];
+const ZONE_DEFS_RUNNING = [
+  {name:'Z1 — Recovery',pct:'< 65% max HR',bg:'#F1EFE8',tc:'#444441'},
+  {name:'Z2 — Aerobic',pct:'65–75% max HR',bg:'#E6F1FB',tc:'#0C447C'},
+  {name:'Z3 — Tempo',pct:'76–84% max HR',bg:'#EAF3DE',tc:'#27500A'},
+  {name:'Z4 — Threshold',pct:'85–92% max HR',bg:'#FAEEDA',tc:'#412402'},
+  {name:'Z5 — VO2max',pct:'93–100% max HR',bg:'#EEEDFE',tc:'#26215C'},
+];
+
+const EXAMPLE_TEXTS = {
+  ultra: `Ultra Marathon 18-Week Training Plan — 50K goal
+
+Phase 1 — Base (Weeks 1-6)
+Week 1
+Mon: Rest
+Tue: Easy run 45 min (Z2)
+Wed: Strength + core 45 min
+Thu: Easy run 60 min with strides at end
+Fri: Rest
+Sat: Long run 12 miles — easy effort
+Sun: Recovery jog 30 min
+
+Week 2
+Mon: Rest
+Tue: Easy run 50 min
+Wed: Strength
+Thu: Tempo run — 2×10 min at half marathon effort
+Fri: Rest
+Sat: Long run 14 miles — easy
+Sun: Recovery 30 min
+
+Phase 2 — Build (Weeks 7-12)
+Week 7
+Mon: Rest
+Tue: Track — 8×800m at 5K pace, 90s rest
+Wed: Easy 40 min + strength
+Thu: Medium long run 10 miles
+Fri: Rest
+Sat: Long run 18 miles with last 3 miles at marathon pace
+Sun: Easy 40 min`,
+
+  triathlon: `Sprint Triathlon 8-Week Plan
+
+Week 1 — Base
+Monday: Rest
+Tuesday: Swim 2000m easy (300m warmup, 8×200m @ 80%, 200m cooldown)
+Wednesday: Bike 45 min easy Z2
+Thursday: Run 30 min easy
+Friday: Rest
+Saturday: Brick — Bike 60 min + immediate Run 20 min
+Sunday: Long swim 2500m easy
+
+Week 2
+Monday: Rest
+Tuesday: Swim intervals 2200m (400 WU, 10×100m fast, 400 CD)
+Wednesday: Bike 55 min with 3×5 min threshold efforts
+Thursday: Run 35 min easy + 4×30s strides
+Friday: Rest
+Saturday: Brick — Bike 75 min + Run 25 min
+Sunday: Easy recovery swim 1500m`,
+
+  cycling: `12-Week Road Cycling Base Block
+
+Phase 1 — Foundation (Weeks 1-4)
+Week 1
+Mon: Off
+Tue: 1hr — Zone 2 endurance
+Wed: 45 min — easy recovery spin
+Thu: 1.5hr — Zone 2, include 2×10 min sweetspot (88-93% FTP)
+Fri: Off
+Sat: 3hr — long steady ride Zone 2
+Sun: 1hr — easy endurance
+
+Week 2  
+Mon: Off
+Tue: 1hr — Sweetspot 3×10 min
+Wed: 45 min easy
+Thu: 1.5hr — 2×20 min sweetspot
+Fri: Off
+Sat: 3.5hr — long ride with some climbing
+Sun: 1hr easy`
+};
+
+// ─── STATE ───────────────────────────────────────────────────────────────────
+let appState = { athletes: [], currentAthleteId: null, anthropicKey: '' };
+let pendingImport = null;
+
+function loadAppState() {
+  try { const s = localStorage.getItem('training_hub_v2'); if (s) appState = {...appState, ...JSON.parse(s)}; } catch(e) {}
+}
+function saveAppState() {
+  try { localStorage.setItem('training_hub_v2', JSON.stringify(appState)); } catch(e) {}
+}
+
+function currentAthlete() {
+  return appState.athletes.find(a => a.id === appState.currentAthleteId) || null;
+}
+function getAthleteState(id) {
+  return appState.athletes.find(a => a.id === id);
+}
+
+function defaultAthleteData(sport) {
+  return {
+    ftp: sport === 'running' ? 180 : 200,
+    ftpHistory: [],
+    activities: [],
+    completed: [],
+    weeks: [],
+    planName: '',
+    sport: sport || 'cycling',
+    stravaClientId: null,
+    stravaConnected: false,
+  };
+}
+
+// ─── ATHLETE MANAGEMENT ──────────────────────────────────────────────────────
+function renderAthleteBar() {
+  const bar = document.getElementById('athleteBar');
+  let html = appState.athletes.map(a => {
+    const active = a.id === appState.currentAthleteId;
+    const initials = a.name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+    const ci = a.colorIdx || 0;
+    return `<button class="athlete-chip ${active ? 'active':''}" onclick="selectAthlete('${a.id}')">
+      <div class="athlete-avatar" style="background:${AVATAR_COLORS[ci]};color:${AVATAR_TEXT[ci]}">${initials}</div>
+      ${a.name}
+    </button>`;
+  }).join('');
+  html += `<button class="add-athlete-btn" onclick="openNewAthleteModal()">+ Add athlete</button>`;
+  bar.innerHTML = html;
+}
+
+function selectAthlete(id) {
+  appState.currentAthleteId = id;
+  saveAppState();
+  renderAthleteBar();
+if (appState.anthropicKey) {
+  const ks = document.getElementById('apiKeyStatus');
+  if (ks) { ks.textContent = '✓ API key already saved.'; ks.style.color = '#27500A'; }
+}
+  renderHeaderForAthlete();
+  buildPlan();
+  updateZones();
+  updateMetrics();
+  renderFTPHistory();
+  const a = currentAthlete();
+  if (a) {
+    document.getElementById('ftpInput').value = a.ftp;
+    if (a.stravaClientId) document.getElementById('clientIdInput').value = a.stravaClientId;
+    updateStravaUI();
+  }
+}
+
+function renderHeaderForAthlete() {
+  const a = currentAthlete();
+  if (!a) {
+    document.getElementById('headerName').textContent = 'Training Hub';
+    document.getElementById('headerSub').textContent = 'Select or create an athlete to get started';
+    return;
+  }
+  document.getElementById('headerName').textContent = a.name;
+  const planPart = a.planName ? ` · ${a.planName}` : ' · No plan yet';
+  const sportLabels = {running:'Running',cycling:'Cycling / MTB',triathlon:'Triathlon',swimming:'Swimming',other:'Sport'};
+  document.getElementById('headerSub').textContent = (sportLabels[a.sport] || 'Training') + planPart;
+}
+
+// ─── NEW ATHLETE MODAL ───────────────────────────────────────────────────────
+function openNewAthleteModal() {
+  selectedColor = 0;
+  document.getElementById('newAthleteName').value = '';
+  document.getElementById('athleteModalOverlay').style.display = 'flex';
+  document.getElementById('newAthleteName').focus();
+  const sw = document.getElementById('colorSwatches');
+  sw.innerHTML = AVATAR_COLORS.map((c,i) => `<div class="color-swatch ${i===0?'selected':''}" style="background:${c}" onclick="selectColor(${i},this)"></div>`).join('');
+}
+function closeAthleteModal() { document.getElementById('athleteModalOverlay').style.display = 'none'; }
+function closeAthleteModalOutside(e) { if (e.target === document.getElementById('athleteModalOverlay')) closeAthleteModal(); }
+function selectColor(i, el) {
+  selectedColor = i;
+  document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
+  el.classList.add('selected');
+}
+function createAthlete() {
+  const name = document.getElementById('newAthleteName').value.trim();
+  if (!name) { alert('Please enter a name.'); return; }
+  const sport = document.getElementById('newAthleteSport').value;
+  const id = 'a_' + Date.now();
+  const athlete = { id, name, sport, colorIdx: selectedColor, ...defaultAthleteData(sport) };
+  appState.athletes.push(athlete);
+  saveAppState();
+  closeAthleteModal();
+  selectAthlete(id);
+}
+
+// ─── PLAN BUILD ──────────────────────────────────────────────────────────────
+function buildPlan() {
+  const el = document.getElementById('page-plan');
+  const a = currentAthlete();
+  if (!a) {
+    el.innerHTML = `<div class="no-plan"><div class="no-plan-icon">👤</div><h2>No athlete selected</h2><p>Create an athlete profile to get started tracking your training.</p><button class="btn primary" onclick="openNewAthleteModal()">Create athlete</button></div>`;
+    return;
+  }
+  if (!a.weeks || a.weeks.length === 0) {
+    el.innerHTML = `<div class="no-plan"><div class="no-plan-icon">📋</div><h2>No plan yet</h2><p>Import any training plan — paste text from a coach, website, or write your own — and the AI will structure it into this calendar.</p><button class="btn primary" onclick="showPage('import', document.querySelectorAll('.nav-btn')[3])">Import a plan</button></div>`;
+    return;
+  }
+  let html = '';
+  let lastPhase = null;
+  a.weeks.forEach((week, wi) => {
+    if (week.phase !== lastPhase) {
+      const p = week.phaseInfo || {label:'Phase', title: week.phase || '', weeks:'', pill:'#D3D1C7', pillText:'#444441'};
+      html += `<div class="phase-header"><span class="phase-pill" style="background:${p.pill};color:${p.pillText}">${p.label||'Phase'}</span><span class="phase-title">${p.title||''}</span><span class="phase-weeks">${p.weeks||''}</span></div>`;
+      lastPhase = week.phase;
+    }
+    html += `<div class="week-block"><div class="week-label">${week.label}</div><div class="day-grid">`;
+    week.days.forEach((day, di) => {
+      const key = `w${wi}d${di}`;
+      const done = a.completed.includes(key);
+      html += `<div class="day-cell t-${day.type||'rest'}" onclick="openDay(${wi},${di})" id="cell_${key}">
+        <div class="day-name">${day.name||''}</div>
+        <div class="day-type">${day.title||''}</div>
+        <div class="day-detail">${day.detail||''}</div>
+        ${done ? '<div class="done-dot"></div>' : ''}
+      </div>`;
+    });
+    html += `</div></div>`;
+  });
+  el.innerHTML = html;
+}
+
+// ─── MODAL ───────────────────────────────────────────────────────────────────
+function openDay(wi, di) {
+  const a = currentAthlete();
+  if (!a || !a.weeks[wi]) return;
+  const week = a.weeks[wi];
+  const day = week.days[di];
+  const key = `w${wi}d${di}`;
+  const wo = day.workout || null;
+  const logs = a.activities.filter(act => act.key === key);
+  const sportIsRunning = a.sport === 'running';
+
+  let html = `<div class="modal-header">
+    <div><div class="modal-title">Week ${wi+1} ${day.name} — ${day.title}</div>
+    <div class="modal-sub">${week.label}</div></div>
+    <button class="modal-close" onclick="closeModal()">✕</button>
+  </div>`;
+
+  if (wo && wo.blocks && wo.blocks.length) {
+    html += `<div class="wo-bar">`;
+    wo.blocks.forEach(b => {
+      const mins = b.t && b.t.includes('ea') ? 4 : parseInt(b.t||'5') || 5;
+      html += `<div class="wo-seg" style="flex:${mins};background:${SEG_COLORS[b.z]||'#ccc'};color:${SEG_TEXT[b.z]||'#333'}">${mins > 8 ? b.t : ''}</div>`;
+    });
+    html += `</div>`;
+    wo.blocks.forEach(b => {
+      html += `<div class="wo-block wo-${b.z||'rest'}"><div class="wo-block-body"><div class="wo-block-label">${b.l}</div><div class="wo-block-detail">${b.d}</div></div><div class="wo-block-time">${b.t}</div></div>`;
+    });
+    if (wo.tip) html += `<div class="tip-box"><strong>Note:</strong> ${wo.tip}</div>`;
+  } else if (day.detail) {
+    html += `<div class="tip-box">${day.detail}</div>`;
+  }
+
+  if (logs.length > 0) {
+    html += `<div style="margin-top:14px">`;
+    logs.forEach(act => {
+      html += `<div class="logged-entry">
+        <div class="logged-head"><span class="logged-name">${act.name}</span><span class="logged-date">${act.date}</span></div>
+        <div class="logged-metrics">
+          ${act.dur ? `Duration <span>${act.dur} min</span>` : ''}
+          ${act.pwr && !sportIsRunning ? `&nbsp;· Avg power <span>${act.pwr}w</span>` : ''}
+          ${act.pwr && sportIsRunning ? `&nbsp;· Avg pace <span>${act.pwr}/mi</span>` : ''}
+          ${act.hr ? `&nbsp;· Avg HR <span>${act.hr} bpm</span>` : ''}
+          ${act.tss ? `&nbsp;· TSS <span>${act.tss}</span>` : ''}
+        </div>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+
+  const pwrPlaceholder = sportIsRunning ? '8:30' : Math.round(a.ftp * 0.9);
+  const pwrLabel = sportIsRunning ? 'Avg pace (min/mi)' : 'Avg power (w)';
+  html += `<div class="log-section">
+    <div class="log-title">Log this workout</div>
+    <input class="log-input" id="log_name" placeholder="Activity name">
+    <div class="log-grid">
+      <div class="log-field"><label>Duration (min)</label><input class="log-input" id="log_dur" type="${sportIsRunning?'text':'number'}" placeholder="60" style="margin:0"></div>
+      <div class="log-field"><label>${pwrLabel}</label><input class="log-input" id="log_pwr" type="text" placeholder="${pwrPlaceholder}" style="margin:0"></div>
+      <div class="log-field"><label>Avg HR (bpm)</label><input class="log-input" id="log_hr" type="number" placeholder="155" style="margin:0"></div>
+    </div>
+    <button class="btn primary" onclick="logActivity('${key}','${day.title.replace(/'/g,"\\'")}')">Mark complete + save</button>
+  </div>`;
+
+  document.getElementById('modalContent').innerHTML = html;
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function closeModal() { document.getElementById('modalOverlay').classList.remove('open'); }
+function closeModalOutside(e) { if (e.target === document.getElementById('modalOverlay')) closeModal(); }
+
+function logActivity(key, title) {
+  const a = currentAthlete();
+  if (!a) return;
+  const name = document.getElementById('log_name').value || title;
+  const dur = document.getElementById('log_dur').value;
+  const pwr = document.getElementById('log_pwr').value;
+  const hr = document.getElementById('log_hr').value;
+  const durN = parseFloat(dur);
+  const pwrN = parseFloat(pwr);
+  const tss = (durN && pwrN && !isNaN(pwrN) && a.sport !== 'running') ?
+    Math.round((durN * pwrN * pwrN) / (a.ftp * a.ftp * 3.6)) : null;
+  a.activities.push({ key, name, date: new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'}), dur: dur||null, pwr: pwr||null, hr: hr||null, tss });
+  if (!a.completed.includes(key)) a.completed.push(key);
+  saveAppState();
+  closeModal();
+  buildPlan();
+  updateMetrics();
+}
+
+// ─── ZONES ───────────────────────────────────────────────────────────────────
+function updateZones() {
+  const a = currentAthlete();
+  const isRunning = a && a.sport === 'running';
+  const ftp = parseInt(document.getElementById('ftpInput').value) || 200;
+  document.getElementById('ftpLabel').textContent = isRunning ? 'Max heart rate (bpm) or threshold pace' : 'Current FTP (watts)';
+  document.getElementById('zoneTip').innerHTML = isRunning
+    ? '<strong>Running zones</strong> are based on % max HR or pace zones. Update after races or time trials.'
+    : '<strong>Sweetspot = 88–93% FTP.</strong> Update FTP after each test — all zones recalculate automatically.';
+
+  const defs = isRunning ? ZONE_DEFS_RUNNING : ZONE_DEFS_CYCLING;
+  let rows = '<tr><th>Zone</th><th>% Reference</th><th>' + (isRunning ? 'HR / Pace' : 'Watts') + '</th></tr>';
+  if (!isRunning) {
+    const labels = [
+      '< ' + Math.round(ftp * 0.55) + 'w',
+      Math.round(ftp * 0.56) + '–' + Math.round(ftp * 0.75) + 'w',
+      Math.round(ftp * 0.76) + '–' + Math.round(ftp * 0.87) + 'w',
+      Math.round(ftp * 0.88) + '–' + Math.round(ftp * 0.93) + 'w',
+      Math.round(ftp * 0.94) + '–' + Math.round(ftp * 1.05) + 'w',
+      Math.round(ftp * 1.06) + '–' + Math.round(ftp * 1.20) + 'w',
+      '> ' + Math.round(ftp * 1.21) + 'w',
+    ];
+    defs.forEach((z, i) => {
+      rows += `<tr><td><span class="zone-pill" style="background:${z.bg};color:${z.tc}">${z.name}</span></td><td style="color:var(--text-secondary)">${z.pct}</td><td style="font-weight:500">${labels[i]}</td></tr>`;
+    });
+  } else {
+    const hrLabels = [
+      '< ' + Math.round(ftp*0.65) + ' bpm', Math.round(ftp*0.65)+'–'+Math.round(ftp*0.75)+' bpm',
+      Math.round(ftp*0.76)+'–'+Math.round(ftp*0.84)+' bpm', Math.round(ftp*0.85)+'–'+Math.round(ftp*0.92)+' bpm',
+      Math.round(ftp*0.93)+'–'+ftp+' bpm'
+    ];
+    defs.forEach((z, i) => {
+      rows += `<tr><td><span class="zone-pill" style="background:${z.bg};color:${z.tc}">${z.name}</span></td><td style="color:var(--text-secondary)">${z.pct}</td><td style="font-weight:500">${hrLabels[i]}</td></tr>`;
+    });
+  }
+  document.getElementById('zoneTable').innerHTML = rows;
+}
+
+function saveFTP() {
+  const a = currentAthlete();
+  if (!a) return;
+  const ftp = parseInt(document.getElementById('ftpInput').value) || 200;
+  a.ftp = ftp;
+  const label = a.sport === 'running' ? 'Max HR / pace' : 'FTP';
+  a.ftpHistory.push({ ftp, label, date: new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) });
+  saveAppState();
+  updateZones();
+  renderFTPHistory();
+}
+
+function renderFTPHistory() {
+  const a = currentAthlete();
+  const el = document.getElementById('ftpHistory');
+  if (!a || a.ftpHistory.length === 0) { el.innerHTML = '<div class="empty">No tests logged yet.</div>'; return; }
+  el.innerHTML = a.ftpHistory.map((h, i) => {
+    const prev = i > 0 ? a.ftpHistory[i-1].ftp : null;
+    const delta = prev ? h.ftp - prev : null;
+    const badge = delta !== null ? `<span class="ftp-delta ${delta >= 0 ? 'up' : 'same'}">${delta >= 0 ? '+' : ''}${delta}</span>` : '';
+    return `<div class="ftp-entry"><span>${h.date}</span><span style="font-weight:500">${h.ftp} ${a.sport==='running'?'bpm':'w'} ${badge}</span></div>`;
+  }).join('');
+}
+
+// ─── METRICS ─────────────────────────────────────────────────────────────────
+function updateMetrics() {
+  const a = currentAthlete();
+  if (!a) {
+    document.getElementById('metricsGrid').innerHTML = '<div class="empty">No athlete selected.</div>';
+    return;
+  }
+  const acts = a.activities;
+  const withPwr = acts.filter(act => act.pwr && !isNaN(parseFloat(act.pwr)));
+  const withHR = acts.filter(act => act.hr);
+  const avgPwrN = withPwr.length ? Math.round(withPwr.reduce((s,act)=>s+parseFloat(act.pwr),0)/withPwr.length) : null;
+  const avgHR = withHR.length ? Math.round(withHR.reduce((s,act)=>s+parseInt(act.hr),0)/withHR.length) : null;
+  const totalTSS = acts.reduce((s,act)=>s+(act.tss||0),0);
+  const totalWeeks = a.weeks ? a.weeks.length : 0;
+  const totalWorkouts = a.weeks ? a.weeks.reduce((s,w)=>s+w.days.filter(d=>d.type!=='rest').length, 0) : 0;
+  const pwrLabel = a.sport === 'running' ? 'Avg pace' : 'Avg power';
+  const pwrVal = avgPwrN ? (a.sport==='running' ? withPwr[withPwr.length-1].pwr : avgPwrN+'w') : '—';
+
+  document.getElementById('metricsGrid').innerHTML = `
+    <div class="metric-card"><div class="metric-val">${acts.length}</div><div class="metric-lbl">Activities logged</div></div>
+    <div class="metric-card"><div class="metric-val">${pwrVal}</div><div class="metric-lbl">${pwrLabel}</div></div>
+    <div class="metric-card"><div class="metric-val">${avgHR||'—'}</div><div class="metric-lbl">Avg heart rate</div></div>
+    <div class="metric-card"><div class="metric-val">${totalTSS||'—'}</div><div class="metric-lbl">Total TSS</div></div>`;
+
+  const pct = totalWorkouts > 0 ? Math.min(100, Math.round((a.completed.length / totalWorkouts) * 100)) : 0;
+  document.getElementById('progressLabel').textContent = a.completed.length + ' / ' + totalWorkouts + ' workouts (' + totalWeeks + ' weeks)';
+  document.getElementById('progressBar').style.width = pct + '%';
+
+  const list = document.getElementById('activityList');
+  if (acts.length === 0) { list.innerHTML = '<div class="empty">No activities yet.<br>Click any day on the plan to log a workout.</div>'; return; }
+  list.innerHTML = [...acts].reverse().map(act => `
+    <div class="activity-row">
+      <div class="activity-info">
+        <div class="activity-name">${act.name}</div>
+        <div class="activity-meta">${act.date}${act.dur?'·'+act.dur+' min':''}${act.pwr?'·'+act.pwr+(a.sport==='running'?'/mi':'w'):''} ${act.hr?'·'+act.hr+' bpm':''}</div>
+      </div>
+      <span class="badge">logged</span>
+    </div>`).join('');
+}
+
+// ─── IMPORT / AI ─────────────────────────────────────────────────────────────
+function fillExample(key) {
+  document.getElementById('importText').value = EXAMPLE_TEXTS[key] || '';
+  if (key === 'ultra') { document.getElementById('importSport').value = 'running'; document.getElementById('importPlanName').value = '50K Ultra Plan'; }
+  if (key === 'triathlon') { document.getElementById('importSport').value = 'triathlon'; document.getElementById('importPlanName').value = 'Sprint Tri Plan'; }
+  if (key === 'cycling') { document.getElementById('importSport').value = 'cycling'; document.getElementById('importPlanName').value = 'Road Base Block'; }
+}
+
+function saveApiKey() {
+  const key = document.getElementById('apiKeyInput').value.trim();
+  if (!key) return;
+  appState.anthropicKey = key;
+  saveAppState();
+  document.getElementById('apiKeyInput').value = '';
+  document.getElementById('apiKeyStatus').textContent = '✓ Key saved — ready to parse plans.';
+  document.getElementById('apiKeyStatus').style.color = '#27500A';
+}
+
+async function importPlan() {
+  const a = currentAthlete();
+  if (!a) { alert('Please select or create an athlete first.'); return; }
+  const text = document.getElementById('importText').value.trim();
+  if (!text) { alert('Please paste a training plan first.'); return; }
+  const planName = document.getElementById('importPlanName').value.trim() || 'Training Plan';
+  const sport = document.getElementById('importSport').value;
+
+  const btn = document.getElementById('importBtn');
+  const status = document.getElementById('importStatus');
+  if (!appState.anthropicKey) {
+    status.className = 'import-status error';
+    status.textContent = 'Error: No API key saved. Enter your Anthropic API key in the box above first.';
+    return;
+  }
+  btn.disabled = true;
+  btn.innerHTML = '<span class="ai-spinner"></span>Parsing...';
+  status.className = 'import-status';
+  status.textContent = 'Sending to AI parser…';
+
+  const systemPrompt = `You are a training plan parser. Convert the training plan text into a structured JSON object.
+
+Return ONLY valid JSON, no markdown, no backticks, no explanation.
+
+The JSON must have this exact shape:
+{
+  "planName": "string",
+  "sport": "running|cycling|triathlon|swimming|other",
+  "phases": [
+    {
+      "label": "Phase 1",
+      "title": "Description",
+      "weeks": "Weeks 1-4",
+      "pill": "#hex_light_fill",
+      "pillText": "#hex_dark_text"
+    }
+  ],
+  "weeks": [
+    {
+      "phase": 0,
+      "label": "Week 1 — description",
+      "phaseInfo": { "label": "Phase 1", "title": "...", "weeks": "Weeks 1-X", "pill": "#E6F1FB", "pillText": "#0C447C" },
+      "days": [
+        {
+          "name": "Mon",
+          "type": "rest|endurance|intervals|tempo|recovery|strength|test|race|long",
+          "title": "Short title",
+          "detail": "Brief detail",
+          "workout": {
+            "blocks": [
+              { "z": "warmup|ss|rest|cooldown|vo2|long", "l": "block label", "d": "detail description", "t": "duration like '15 min' or '45 min'" }
+            ],
+            "tip": "coaching note"
+          }
+        }
+      ]
+    }
+  ]
+}
+
+Day type mapping:
+- rest/off → "rest"
+- easy/recovery/jog → "recovery" or "endurance"
+- long run/long ride → "long"
+- tempo/threshold/sweetspot → "tempo"
+- intervals/track/VO2/fartlek → "intervals"
+- strength/gym/core → "strength"
+- fitness test/FTP test/time trial → "test"
+- race/event/competition → "race"
+
+Phase pill colors: Phase1=#E6F1FB pillText=#0C447C, Phase2=#EAF3DE pillText=#27500A, Phase3=#FAEEDA pillText=#412402, Phase4=#EEEDFE pillText=#26215C
+
+For days without detailed workout blocks, set workout to null.
+For days with workouts, create appropriate blocks (warmup, main set, cooldown).
+Always include all 7 days (Mon-Sun).
+Sport is: ${sport}
+Plan name suggestion: ${planName}`;
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': appState.anthropicKey || '',
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 16000,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: text }]
+      })
+    });
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error.message || 'API error');
+    const raw = data.content.map(c => c.text || '').join('');
+    let clean = raw.replace(/```json|```/g,'').trim();
+    // Find the outermost JSON object in case there's extra text
+    const firstBrace = clean.indexOf('{');
+    const lastBrace = clean.lastIndexOf('}');
+    if (firstBrace !== -1 && lastBrace !== -1) clean = clean.slice(firstBrace, lastBrace + 1);
+    const parsed = JSON.parse(clean);
+
+    if (!parsed.weeks || !Array.isArray(parsed.weeks)) throw new Error('Invalid response structure');
+
+    pendingImport = { parsed, sport };
+    status.className = 'import-status success';
+    status.textContent = `✓ Parsed ${parsed.weeks.length} weeks with ${parsed.weeks.reduce((s,w)=>s+w.days.filter(d=>d.type!=='rest').length,0)} workouts.`;
+
+    // Show preview
+    let preview = `<div style="font-size:13px;color:var(--text-secondary);margin-bottom:12px">${parsed.weeks.length} weeks · ${sport} · ${planName}</div>`;
+    parsed.weeks.slice(0,3).forEach(w => {
+      preview += `<div style="margin-bottom:10px"><div class="week-label">${w.label}</div><div style="display:flex;gap:6px;flex-wrap:wrap">`;
+      w.days.forEach(d => {
+        preview += `<span class="zone-pill t-${d.type}" style="font-size:11px;padding:3px 8px">${d.name}: ${d.title}</span>`;
+      });
+      preview += `</div></div>`;
+    });
+    if (parsed.weeks.length > 3) preview += `<div style="font-size:12px;color:var(--text-tertiary)">…and ${parsed.weeks.length-3} more weeks</div>`;
+    document.getElementById('importPreviewContent').innerHTML = preview;
+    document.getElementById('importPreview').style.display = 'block';
+  } catch(e) {
+    status.className = 'import-status error';
+    status.textContent = 'Error: ' + (e.message || 'Could not parse plan. Try pasting more structured text.');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = 'Parse with AI';
+  }
+}
+
+function confirmImport() {
+  const a = currentAthlete();
+  if (!a || !pendingImport) return;
+  const { parsed } = pendingImport;
+  a.weeks = parsed.weeks;
+  a.planName = parsed.planName || document.getElementById('importPlanName').value || 'Training Plan';
+  a.sport = parsed.sport || a.sport;
+  a.completed = [];
+  a.activities = [];
+  saveAppState();
+  document.getElementById('importPreview').style.display = 'none';
+  renderHeaderForAthlete();
+  buildPlan();
+  updateMetrics();
+  showPage('plan', document.querySelectorAll('.nav-btn')[0]);
+  pendingImport = null;
+}
+
+
+// ─── MANAGE TAB ──────────────────────────────────────────────────────────────
+function renderManageTab() {
+  const grid = document.getElementById('manageGrid');
+  if (!grid) return;
+  if (appState.athletes.length === 0) {
+    grid.innerHTML = '<div class="empty">No athletes yet. Use "+ Add athlete" to create one.</div>';
+    return;
+  }
+  grid.innerHTML = appState.athletes.map(a => {
+    const ci = a.colorIdx || 0;
+    const initials = a.name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+    const sportLabels = {running:'Running',cycling:'Cycling / MTB',triathlon:'Triathlon',swimming:'Swimming',other:'Other'};
+    const workouts = a.weeks ? a.weeks.reduce((s,w)=>s+w.days.filter(d=>d.type!=='rest').length,0) : 0;
+    const done = a.completed ? a.completed.length : 0;
+    return `<div class="manage-card" id="mcard_${a.id}">
+      <div class="manage-card-header">
+        <div class="manage-avatar-lg" style="background:${AVATAR_COLORS[ci]};color:${AVATAR_TEXT[ci]}">${initials}</div>
+        <div>
+          <div class="manage-name">${a.name}</div>
+          <div class="manage-meta">${sportLabels[a.sport]||'Training'} · ${a.planName||'No plan'} · ${done}/${workouts} workouts</div>
+        </div>
+      </div>
+      <div class="manage-fields">
+        <div class="manage-field">
+          <label>Name</label>
+          <input class="log-input" id="mname_${a.id}" value="${a.name}" style="margin:0">
+        </div>
+        <div class="manage-field">
+          <label>Sport</label>
+          <select class="log-input" id="msport_${a.id}" style="margin:0">
+            <option value="running" ${a.sport==='running'?'selected':''}>Running</option>
+            <option value="cycling" ${a.sport==='cycling'?'selected':''}>Cycling / MTB</option>
+            <option value="triathlon" ${a.sport==='triathlon'?'selected':''}>Triathlon</option>
+            <option value="swimming" ${a.sport==='swimming'?'selected':''}>Swimming</option>
+            <option value="other" ${a.sport==='other'?'selected':''}>Other</option>
+          </select>
+        </div>
+        <div class="manage-field">
+          <label>Avatar color</label>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">
+            ${AVATAR_COLORS.map((c,i) => `<div onclick="setAthleteColor('${a.id}',${i},this)" style="width:24px;height:24px;border-radius:50%;background:${c};cursor:pointer;border:2px solid ${i===ci?'var(--text-primary)':'transparent'};transition:transform 0.1s" onmouseover="this.style.transform='scale(1.15)'" onmouseout="this.style.transform='scale(1)'"></div>`).join('')}
+          </div>
+        </div>
+      </div>
+      <div class="manage-actions">
+        <button class="btn primary" onclick="saveAthleteEdits('${a.id}')">Save changes</button>
+        <button class="btn danger" onclick="deleteAthlete('${a.id}')">Delete</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function setAthleteColor(id, colorIdx, el) {
+  // Update UI immediately
+  const card = document.getElementById('mcard_' + id);
+  card.querySelectorAll('[onclick^="setAthleteColor"]').forEach(d => d.style.border = '2px solid transparent');
+  el.style.border = '2px solid var(--text-primary)';
+  // Store on element for save
+  el.closest('.manage-card').dataset.pendingColor = colorIdx;
+  // Update avatar preview
+  const avatar = card.querySelector('.manage-avatar-lg');
+  const initials = avatar.textContent;
+  avatar.style.background = AVATAR_COLORS[colorIdx];
+  avatar.style.color = AVATAR_TEXT[colorIdx];
+}
+
+function saveAthleteEdits(id) {
+  const a = appState.athletes.find(x => x.id === id);
+  if (!a) return;
+  const name = document.getElementById('mname_' + id).value.trim();
+  const sport = document.getElementById('msport_' + id).value;
+  if (!name) { alert('Name cannot be empty.'); return; }
+  const card = document.getElementById('mcard_' + id);
+  const pendingColor = card.dataset.pendingColor;
+  a.name = name;
+  a.sport = sport;
+  if (pendingColor !== undefined) a.colorIdx = parseInt(pendingColor);
+  saveAppState();
+  renderAthleteBar();
+  renderManageTab();
+  if (appState.currentAthleteId === id) renderHeaderForAthlete();
+}
+
+function deleteAthlete(id) {
+  const a = appState.athletes.find(x => x.id === id);
+  if (!a) return;
+  if (!confirm(`Delete "${a.name}" and all their data? This cannot be undone.`)) return;
+  appState.athletes = appState.athletes.filter(x => x.id !== id);
+  if (appState.currentAthleteId === id) {
+    appState.currentAthleteId = appState.athletes.length > 0 ? appState.athletes[0].id : null;
+  }
+  saveAppState();
+  renderAthleteBar();
+  renderManageTab();
+  if (appState.currentAthleteId) {
+    selectAthlete(appState.currentAthleteId);
+  } else {
+    document.getElementById('headerName').textContent = 'Training Hub';
+    document.getElementById('headerSub').textContent = 'Select or create an athlete to get started';
+    document.getElementById('page-plan').innerHTML = '<div class="no-plan"><div class="no-plan-icon">&#128100;</div><h2>No athletes yet</h2><p>Create an athlete profile to get started.</p><button class="btn primary" onclick="openNewAthleteModal()">Add athlete</button></div>';
+  }
+}
+
+// ─── STRAVA ──────────────────────────────────────────────────────────────────
+function saveClientId() {
+  const a = currentAthlete();
+  if (!a) return;
+  const id = document.getElementById('clientIdInput').value.trim();
+  if (!id) return;
+  a.stravaClientId = id;
+  saveAppState();
+  alert('Client ID saved. Strava OAuth will be wired in a future update.');
+}
+function stravaAction() { showPage('strava', document.querySelectorAll('.nav-btn')[4]); }
+function updateStravaUI() {
+  const a = currentAthlete();
+  const connected = a && a.stravaConnected;
+  document.getElementById('stravaDot').className = 'strava-dot' + (connected ? ' on' : '');
+  document.getElementById('stravaText').textContent = connected ? 'Strava connected' : 'Strava not connected';
+  document.getElementById('stravaBtn').textContent = connected ? 'Connected' : 'Connect Strava';
+}
+
+// ─── NAV ─────────────────────────────────────────────────────────────────────
+function showPage(id, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  if (btn) btn.classList.add('active');
+  if (id === 'manage') renderManageTab();
+}
+
+// ─── SEED: import existing MTB plan for the son ──────────────────────────────
+const MTB_WEEKS = [
+  {phase:0,label:'Week 1 — First rides post-surgery',phaseInfo:{label:'Phase 1',title:'Recovery & base building',weeks:'Weeks 1–4',pill:'#E6F1FB',pillText:'#0C447C'},days:[
+    {type:'rest',name:'Mon',title:'Rest',detail:'Full rest, elevate arm'},
+    {type:'endurance',name:'Tue',title:'Easy spin',detail:'30 min Z1–Z2'},
+    {type:'rest',name:'Wed',title:'Rest',detail:'Arm recovery'},
+    {type:'endurance',name:'Thu',title:'Easy spin',detail:'35 min Z1–Z2'},
+    {type:'strength',name:'Fri',title:'Core / legs',detail:'Squats, planks (no arm load)'},
+    {type:'endurance',name:'Sat',title:'Longer spin',detail:'45 min Z2'},
+    {type:'rest',name:'Sun',title:'Rest',detail:'Full rest'},
+  ]},
+  {phase:0,label:'Week 2 — Consistency over intensity',phaseInfo:{label:'Phase 1',title:'Recovery & base building',weeks:'Weeks 1–4',pill:'#E6F1FB',pillText:'#0C447C'},days:[
+    {type:'recovery',name:'Mon',title:'Recovery',detail:'20 min easy spin'},
+    {type:'endurance',name:'Tue',title:'Endurance',detail:'45 min Z2, 85–95 rpm'},
+    {type:'strength',name:'Wed',title:'Core',detail:'Hip bridges, dead bugs'},
+    {type:'endurance',name:'Thu',title:'Endurance',detail:'45 min Z2 + 5×30s spin-ups'},
+    {type:'rest',name:'Fri',title:'Rest',detail:'Arm PT focus'},
+    {type:'endurance',name:'Sat',title:'Long ride',detail:'60 min Z2'},
+    {type:'recovery',name:'Sun',title:'Easy',detail:'30 min Z1 openers'},
+  ]},
+  {phase:0,label:'Week 3 — FTP test',phaseInfo:{label:'Phase 1',title:'Recovery & base building',weeks:'Weeks 1–4',pill:'#E6F1FB',pillText:'#0C447C'},days:[
+    {type:'recovery',name:'Mon',title:'Recovery',detail:'25 min easy'},
+    {type:'test',name:'Tue',title:'FTP test',detail:'Zwift 20-min test',workout:{blocks:[
+      {z:'warmup',l:'Warmup',d:'10 min easy → 5 min Z3 → 5 min easy settle.',t:'20 min'},
+      {z:'vo2',l:'20-min test',d:'Ride as hard as you can sustain for 20 min. Record average power. FTP = avg × 0.95',t:'20 min'},
+      {z:'cooldown',l:'Cooldown',d:'10 min easy. Enter result in Zones tab.',t:'10 min'}
+    ],tip:'Sets all training zones. Start slightly conservative for better data.'
+    }},
+    {type:'rest',name:'Wed',title:'Rest',detail:''},
+    {type:'endurance',name:'Thu',title:'Endurance',detail:'50 min Z2 with new zones'},
+    {type:'strength',name:'Fri',title:'Core / legs',detail:'Bulgarian split squats'},
+    {type:'endurance',name:'Sat',title:'Long ride',detail:'70 min Z2'},
+    {type:'recovery',name:'Sun',title:'Easy',detail:'30 min easy spin'},
+  ]},
+  {phase:0,label:'Week 4 — Recovery week',phaseInfo:{label:'Phase 1',title:'Recovery & base building',weeks:'Weeks 1–4',pill:'#E6F1FB',pillText:'#0C447C'},days:[
+    {type:'rest',name:'Mon',title:'Rest',detail:''},
+    {type:'endurance',name:'Tue',title:'Easy',detail:'40 min Z1–Z2'},
+    {type:'strength',name:'Wed',title:'Core',detail:'Light session, mobility'},
+    {type:'endurance',name:'Thu',title:'Easy',detail:'40 min Z2'},
+    {type:'rest',name:'Fri',title:'Rest',detail:''},
+    {type:'endurance',name:'Sat',title:'Moderate',detail:'55 min Z2'},
+    {type:'rest',name:'Sun',title:'Rest',detail:''},
+  ]},
+  {phase:1,label:'Week 5 — Sweetspot introduction',phaseInfo:{label:'Phase 2',title:'Build — structured intervals',weeks:'Weeks 5–8',pill:'#EAF3DE',pillText:'#27500A'},days:[
+    {type:'rest',name:'Mon',title:'Rest',detail:''},
+    {type:'tempo',name:'Tue',title:'Sweetspot',detail:'2×10 min @ 88–93% FTP',workout:{blocks:[
+      {z:'warmup',l:'Warmup',d:'5 min easy → 5 min progressive build → 3×15s bursts → 2 min settle',t:'15 min'},
+      {z:'ss',l:'Interval 1',d:'88–93% FTP, cadence 85–92 rpm.',t:'10 min'},
+      {z:'rest',l:'Recovery',d:'Easy Z1 spin.',t:'5 min'},
+      {z:'ss',l:'Interval 2',d:'88–93% FTP. Hold power, not perceived effort.',t:'10 min'},
+      {z:'cooldown',l:'Cooldown',d:'Easy Z1 spin.',t:'10 min'},
+    ],tip:'First sweetspot session. ERG mode OFF. Total work: 20 min.'}},
+    {type:'strength',name:'Wed',title:'Core + legs',detail:'Goblet squats, lunges'},
+    {type:'endurance',name:'Thu',title:'Endurance',detail:'60 min Z2, cadence drills'},
+    {type:'recovery',name:'Fri',title:'Recovery',detail:'30 min easy spin'},
+    {type:'tempo',name:'Sat',title:'Sweetspot',detail:'3×10 min @ 88–93% FTP',workout:{blocks:[
+      {z:'warmup',l:'Warmup',d:'Standard 15-min warmup',t:'15 min'},
+      {z:'ss',l:'Interval 1',d:'88–93% FTP',t:'10 min'},
+      {z:'rest',l:'Recovery',d:'Z1 easy spin',t:'4 min'},
+      {z:'ss',l:'Interval 2',d:'88–93% FTP',t:'10 min'},
+      {z:'rest',l:'Recovery',d:'Z1 easy spin',t:'4 min'},
+      {z:'ss',l:'Interval 3',d:'88–93% FTP. If power drops below 85% FTP, cut it short.',t:'10 min'},
+      {z:'cooldown',l:'Cooldown',d:'Easy spin.',t:'10 min'},
+    ],tip:'Three intervals. Total work: 30 min.'}},
+    {type:'endurance',name:'Sun',title:'Long ride',detail:'75 min Z2'},
+  ]},
+  {phase:1,label:'Week 6 — VO2 reactivation',phaseInfo:{label:'Phase 2',title:'Build — structured intervals',weeks:'Weeks 5–8',pill:'#EAF3DE',pillText:'#27500A'},days:[
+    {type:'rest',name:'Mon',title:'Rest',detail:''},
+    {type:'intervals',name:'Tue',title:'VO2 intervals',detail:'5×3 min @ 110–115% FTP',workout:{blocks:[
+      {z:'warmup',l:'Warmup',d:'Standard 15-min warmup',t:'15 min'},
+      {z:'vo2',l:'5 intervals',d:'3 min @ 110–115% FTP, 3 min easy Z1 between each.',t:'3 min ea'},
+      {z:'cooldown',l:'Cooldown',d:'10 min easy spin.',t:'10 min'},
+    ],tip:'VO2 reactivation. ERG mode OFF. Total interval work: 15 min.'}},
+    {type:'strength',name:'Wed',title:'Core',detail:'Single leg drills + gym'},
+    {type:'tempo',name:'Thu',title:'Sweetspot',detail:'3×10 min @ 88–93% FTP'},
+    {type:'recovery',name:'Fri',title:'Recovery',detail:'30 min very easy'},
+    {type:'intervals',name:'Sat',title:'MTB sim',detail:'6×1 min all-out, 2 min easy'},
+    {type:'endurance',name:'Sun',title:'Long ride',detail:'80 min Z2, hilly'},
+  ]},
+  {phase:1,label:'Week 7 — Volume peak',phaseInfo:{label:'Phase 2',title:'Build — structured intervals',weeks:'Weeks 5–8',pill:'#EAF3DE',pillText:'#27500A'},days:[
+    {type:'recovery',name:'Mon',title:'Recovery',detail:'30 min easy + stretching'},
+    {type:'intervals',name:'Tue',title:'VO2 intervals',detail:'6×3 min @ 110% FTP'},
+    {type:'endurance',name:'Wed',title:'Endurance',detail:'60 min Z2'},
+    {type:'tempo',name:'Thu',title:'Sweetspot',detail:'3×12 min @ 90% FTP'},
+    {type:'strength',name:'Fri',title:'Gym',detail:'Add upper body if cleared'},
+    {type:'intervals',name:'Sat',title:'Punchy ride',detail:'60 min + 8×45s surges'},
+    {type:'endurance',name:'Sun',title:'Long ride',detail:'90 min Z2'},
+  ]},
+  {phase:1,label:'Week 8 — Recovery + FTP retest',phaseInfo:{label:'Phase 2',title:'Build — structured intervals',weeks:'Weeks 5–8',pill:'#EAF3DE',pillText:'#27500A'},days:[
+    {type:'rest',name:'Mon',title:'Rest',detail:''},
+    {type:'recovery',name:'Tue',title:'Easy',detail:'40 min Z1–Z2'},
+    {type:'rest',name:'Wed',title:'Rest',detail:''},
+    {type:'test',name:'Thu',title:'FTP retest',detail:'Zwift 20-min test'},
+    {type:'rest',name:'Fri',title:'Rest',detail:''},
+    {type:'endurance',name:'Sat',title:'Endurance',detail:'60 min easy Z2'},
+    {type:'rest',name:'Sun',title:'Rest',detail:''},
+  ]},
+  {phase:2,label:'Week 9 — Race-style power',phaseInfo:{label:'Phase 3',title:'Race prep — MTB specificity',weeks:'Weeks 9–12',pill:'#FAEEDA',pillText:'#412402'},days:[
+    {type:'rest',name:'Mon',title:'Rest',detail:''},
+    {type:'intervals',name:'Tue',title:'Race efforts',detail:'8×1 min MAX, 2 min easy'},
+    {type:'endurance',name:'Wed',title:'Endurance',detail:'60 min Z2'},
+    {type:'tempo',name:'Thu',title:'Threshold',detail:'2×15 min @ 95–100% FTP'},
+    {type:'strength',name:'Fri',title:'Gym',detail:'Full body race-prep'},
+    {type:'intervals',name:'Sat',title:'MTB sim',detail:'Alpe du Zwift + surges'},
+    {type:'endurance',name:'Sun',title:'Long ride',detail:'90–100 min Z2'},
+  ]},
+  {phase:2,label:'Week 10 — High load',phaseInfo:{label:'Phase 3',title:'Race prep — MTB specificity',weeks:'Weeks 9–12',pill:'#FAEEDA',pillText:'#412402'},days:[
+    {type:'recovery',name:'Mon',title:'Recovery',detail:'30 min easy spin'},
+    {type:'intervals',name:'Tue',title:'VO2 max',detail:'4×4 min @ 115% FTP'},
+    {type:'endurance',name:'Wed',title:'Endurance',detail:'60 min Z2 + 4×20s sprints'},
+    {type:'tempo',name:'Thu',title:'Sweetspot',detail:'3×15 min @ 90% FTP'},
+    {type:'recovery',name:'Fri',title:'Recovery',detail:'30 min easy'},
+    {type:'intervals',name:'Sat',title:'Zwift race',detail:'Zwift race or group ride'},
+    {type:'endurance',name:'Sun',title:'Long ride',detail:'100 min Z2'},
+  ]},
+  {phase:2,label:'Week 11 — First outdoor rides',phaseInfo:{label:'Phase 3',title:'Race prep — MTB specificity',weeks:'Weeks 9–12',pill:'#FAEEDA',pillText:'#412402'},days:[
+    {type:'rest',name:'Mon',title:'Rest',detail:''},
+    {type:'intervals',name:'Tue',title:'Intervals',detail:'6×2 min @ 110% FTP'},
+    {type:'endurance',name:'Wed',title:'Outdoor ride',detail:'60 min easy trail or road'},
+    {type:'tempo',name:'Thu',title:'Threshold',detail:'2×15 min @ FTP'},
+    {type:'recovery',name:'Fri',title:'Recovery',detail:'Easy spin'},
+    {type:'race',name:'Sat',title:'MTB ride',detail:'Trail ride, moderate effort'},
+    {type:'endurance',name:'Sun',title:'Long ride',detail:'90 min Z2'},
+  ]},
+  {phase:2,label:'Week 12 — Season opener',phaseInfo:{label:'Phase 3',title:'Race prep — MTB specificity',weeks:'Weeks 9–12',pill:'#FAEEDA',pillText:'#412402'},days:[
+    {type:'rest',name:'Mon',title:'Rest',detail:''},
+    {type:'intervals',name:'Tue',title:'VO2 intervals',detail:'5×3 min @ 110% FTP'},
+    {type:'endurance',name:'Wed',title:'Endurance',detail:'60 min Z2, hilly route'},
+    {type:'tempo',name:'Thu',title:'Sweetspot',detail:'3×12 min @ 90% FTP'},
+    {type:'recovery',name:'Fri',title:'Recovery',detail:'30 min easy, leg openers'},
+    {type:'race',name:'Sat',title:'MTB ride',detail:'Trail ride, moderate-hard'},
+    {type:'endurance',name:'Sun',title:'Long ride',detail:'90 min Z2 — Zwift or outdoor'},
+  ]},
+];
+
+// ─── INIT ────────────────────────────────────────────────────────────────────
+loadAppState();
+
+// Seed existing MTB plan if no athletes yet
+if (appState.athletes.length === 0) {
+  const sonId = 'a_son';
+  appState.athletes = [{
+    id: sonId, name: 'Son', sport: 'cycling', colorIdx: 1,
+    ftp: 200, ftpHistory: [], activities: [], completed: [],
+    planName: '12-Week MTB Recovery Plan',
+    weeks: MTB_WEEKS,
+    stravaClientId: null, stravaConnected: false
+  }];
+  appState.currentAthleteId = sonId;
+  saveAppState();
+}
+
+renderAthleteBar();
+selectAthlete(appState.currentAthleteId || appState.athletes[0]?.id);
+</script>
+</body>
+</html>
