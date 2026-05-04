@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0046)file:///C:/Users/ztvau/Downloads/index_20.html -->
+<!-- saved from url=(0046)file:///C:/Users/ztvau/Downloads/index_21.html -->
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -334,8 +334,10 @@
         await setDoc(userRef, { ...window._fbProfile, createdAt: serverTimestamp() });
       }
       // Only call onFirebaseSignIn once per session
+      console.log('onAuthStateChanged fired, _authSignedIn=', _authSignedIn);
       if (!_authSignedIn) {
         _authSignedIn = true;
+        console.log('Calling onFirebaseSignIn');
         if (typeof window.onFirebaseSignIn === 'function') window.onFirebaseSignIn(user, window._fbProfile);
       }
     } else {
@@ -719,6 +721,7 @@ function selectColor(i, el) {
 let _creatingAthlete = false;
 
 async function createAthlete() {
+  console.log('createAthlete called, _creatingAthlete=', _creatingAthlete);
   if (_creatingAthlete) return; // prevent double-fire
   _creatingAthlete = true;
   const name = document.getElementById('newAthleteName').value.trim();
@@ -1802,6 +1805,7 @@ async function loadCoachAthletes(coachId) {
   try {
     const q = query(collection(db, 'athletes'), where('coachId', '==', coachId));
     const snapshot = await getDocs(q);
+    console.log('loadCoachAthletes: found', snapshot.size, 'athletes in Firestore');
     appState.athletes = snapshot.docs.map(function(d) { return Object.assign({id: d.id}, d.data()); });
     if (!appState.currentAthleteId && appState.athletes.length > 0) {
       appState.currentAthleteId = appState.athletes[0].id;
@@ -1879,18 +1883,18 @@ async function deleteAthleteFromFirestore(id) {
 async function createAthleteInFirestore(athlete) {
   if (!window._fb || !window._fbUser) { appState.athletes.push(athlete); saveAppState(); return athlete; }
   const { db, collection, addDoc, serverTimestamp } = window._fb;
+  console.log('createAthleteInFirestore called for:', athlete.name);
   try {
     const ref = await addDoc(collection(db, 'athletes'), {
       ...athlete,
       coachId: window._fbUser.uid,
       createdAt: serverTimestamp()
     });
+    console.log('Created in Firestore with ID:', ref.id);
     athlete.id = ref.id;
     return athlete;
   } catch(e) {
     console.error('Firestore create error:', e);
-    appState.athletes.push(athlete);
-    saveAppState();
     return athlete;
   }
 }
