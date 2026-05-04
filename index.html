@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0046)file:///C:/Users/ztvau/Downloads/index_17.html -->
+<!-- saved from url=(0046)file:///C:/Users/ztvau/Downloads/index_18.html -->
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -730,7 +730,10 @@ async function createAthlete() {
   try {
     if (window._fbUser) {
       athlete = await createAthleteInFirestore(athlete);
+      // Refresh athletes from Firestore to get clean state
+      await refreshAthletes();
       appState.currentAthleteId = athlete.id;
+      selectAthlete(athlete.id);
     } else {
       appState.athletes.push(athlete);
       saveAppState();
@@ -1563,17 +1566,14 @@ function saveAthleteEdits(id) {
   if (btn) { var orig = btn.textContent; btn.textContent = '\u2713 Saved'; btn.style.background = '#27AE60'; setTimeout(function(){ btn.textContent = orig; btn.style.background = ''; }, 2000); }
 }
 
-function deleteAthlete(id) {
+async function deleteAthlete(id) {
   var a = appState.athletes.find(function(x){ return x.id === id; });
   if (!a) return;
   if (!confirm('Delete "' + a.name + '" and all their data? This cannot be undone.')) return;
   if (window._fbUser) {
-    // Let onSnapshot handle local state update after Firestore delete
-    if (appState.currentAthleteId === id) {
-      const remaining = appState.athletes.filter(function(x){ return x.id !== id; });
-      appState.currentAthleteId = remaining.length > 0 ? remaining[0].id : null;
-    }
-    deleteAthleteFromFirestore(id);
+    await deleteAthleteFromFirestore(id);
+    // Refresh from Firestore after delete
+    await refreshAthletes();
   } else {
     appState.athletes = appState.athletes.filter(function(x){ return x.id !== id; });
     if (appState.currentAthleteId === id) appState.currentAthleteId = appState.athletes.length > 0 ? appState.athletes[0].id : null;
@@ -1798,16 +1798,13 @@ window.onFirebaseSignOut = function() {
 
 // ─── FIRESTORE — COACH ───────────────────────────────────────────────────────
 async function loadCoachAthletes(coachId) {
-  const { db, collection, query, where, onSnapshot } = window._fb;
-  // Unsubscribe any existing listener
-  if (_unsubscribeAthletes) { _unsubscribeAthletes(); _unsubscribeAthletes = null; }
-  const q = query(collection(db, 'athletes'), where('coachId', '==', coachId));
-  _unsubscribeAthletes = onSnapshot(q, (snapshot) => {
-    appState.athletes = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-    // If current athlete was deleted or doesn't exist, pick first available
-    const currentExists = appState.athletes.find(function(a){ return a.id === appState.currentAthleteId; });
-    if (!currentExists) {
-      appState.currentAthleteId = appState.athletes.length > 0 ? appState.athletes[0].id : null;
+  const { db, collection, query, where, getDocs } = window._fb;
+  try {
+    const q = query(collection(db, 'athletes'), where('coachId', '==', coachId));
+    const snapshot = await getDocs(q);
+    appState.athletes = snapshot.docs.map(function(d) { return Object.assign({id: d.id}, d.data()); });
+    if (!appState.currentAthleteId && appState.athletes.length > 0) {
+      appState.currentAthleteId = appState.athletes[0].id;
     }
     renderAthleteBar();
     if (appState.currentAthleteId) {
@@ -1817,7 +1814,14 @@ async function loadCoachAthletes(coachId) {
       document.getElementById('headerSub').textContent = 'Create your first athlete to get started';
       buildPlan();
     }
-  });
+  } catch(e) {
+    console.error('Load athletes error:', e);
+  }
+}
+
+async function refreshAthletes() {
+  if (!window._fbUser || !window._fbProfile) return;
+  await loadCoachAthletes(window._fbUser.uid);
 }
 
 async function loadAthleteProfile(userId) {
