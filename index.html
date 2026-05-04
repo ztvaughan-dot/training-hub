@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0046)file:///C:/Users/ztvau/Downloads/index_14.html -->
+<!-- saved from url=(0046)file:///C:/Users/ztvau/Downloads/index_15.html -->
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -712,23 +712,29 @@ function selectColor(i, el) {
   document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
   el.classList.add('selected');
 }
+let _creatingAthlete = false;
+
 async function createAthlete() {
+  if (_creatingAthlete) return; // prevent double-fire
+  _creatingAthlete = true;
   const name = document.getElementById('newAthleteName').value.trim();
-  if (!name) { alert('Please enter a name.'); return; }
+  if (!name) { _creatingAthlete = false; alert('Please enter a name.'); return; }
   const sport = document.getElementById('newAthleteSport').value;
   const id = 'a_' + Date.now();
   let athlete = { id, name, sport, colorIdx: selectedColor, ...defaultAthleteData(sport) };
   closeAthleteModal();
-  if (window._fbUser) {
-    // Don't push to appState - onSnapshot listener will handle it
-    athlete = await createAthleteInFirestore(athlete);
-    // Just set current athlete ID - the snapshot will populate the rest
-    appState.currentAthleteId = athlete.id;
-  } else {
-    appState.athletes.push(athlete);
-    saveAppState();
-    renderAthleteBar();
-    selectAthlete(athlete.id);
+  try {
+    if (window._fbUser) {
+      athlete = await createAthleteInFirestore(athlete);
+      appState.currentAthleteId = athlete.id;
+    } else {
+      appState.athletes.push(athlete);
+      saveAppState();
+      renderAthleteBar();
+      selectAthlete(athlete.id);
+    }
+  } finally {
+    setTimeout(function(){ _creatingAthlete = false; }, 2000);
   }
 }
 
