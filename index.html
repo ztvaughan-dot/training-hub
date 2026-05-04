@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0046)file:///C:/Users/ztvau/Downloads/index_15.html -->
+<!-- saved from url=(0046)file:///C:/Users/ztvau/Downloads/index_16.html -->
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -1232,8 +1232,7 @@ if (appState.anthropicKey) {
   if (ks) { ks.textContent = '\u2713 API key already saved.'; ks.style.color = '#27AE60'; }
 }
 
-// After sign in, migrate localStorage data to Firestore
-window.addEventListener('firebaseReady', migrateLocalStorageToFirestore);
+// Migration disabled - athletes created fresh through UI
 
 // ─── ATHLETE BAR ─────────────────────────────────────────────────────────────
 function renderAthleteBar() {
@@ -1888,23 +1887,9 @@ async function createAthleteInFirestore(athlete) {
 
 // ─── MIGRATE LOCALSTORAGE → FIRESTORE ────────────────────────────────────────
 async function migrateLocalStorageToFirestore() {
-  if (!window._fb || !window._fbUser) return;
-  const local = localStorage.getItem('training_hub_v2');
-  if (!local) return;
-  const migrated = localStorage.getItem('training_hub_migrated');
-  if (migrated) return;
-  try {
-    const data = JSON.parse(local);
-    if (data.athletes && data.athletes.length > 0) {
-      for (const a of data.athletes) {
-        await createAthleteInFirestore({ ...a, coachId: window._fbUser.uid });
-      }
-      localStorage.setItem('training_hub_migrated', 'true');
-      console.log('Migration complete');
-    }
-  } catch(e) {
-    console.error('Migration error:', e);
-  }
+  // Migration disabled - athletes are created fresh through the UI
+  // Mark as migrated so this never runs
+  localStorage.setItem('training_hub_migrated', 'true');
 }
 
 </script>
