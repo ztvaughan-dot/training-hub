@@ -228,10 +228,24 @@
   .no-plan h2 { font-size: 18px; font-weight: 500; margin-bottom: 8px; }
   .no-plan p { font-size: 13px; color: var(--text-secondary); max-width: 320px; margin: 0 auto 20px; line-height: 1.7; }
 
+  /* ── DATE INPUT ICON ── */
+  input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.5); cursor: pointer; opacity: 0.7; }
+  input[type="date"]::-webkit-calendar-picker-indicator:hover { opacity: 1; }
+  @media (prefers-color-scheme: dark) { input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); opacity: 0.7; } }
+
+  /* ── CALENDAR DATES ── */
+  .day-date { font-size: 9px; color: var(--text-tertiary); margin-bottom: 1px; }
+  .day-cell.today { border: 2px solid #27AE60 !important; }
+  .day-cell.missed { border: 2px solid #E74C3C !important; }
+  .day-cell.skipped { opacity: 0.5; }
+  .done-check { position: absolute; top: 4px; right: 5px; font-size: 11px; color: #27AE60; font-weight: 700; }
+  .day-cell.before-start { cursor: default !important; }
+  .day-cell.before-start:hover { opacity: 0.35 !important; transform: none !important; }
+  .day-cell { position: relative; }
+
   /* ── MANAGE TAB ── */
   .manage-grid { display: flex; justify-content: center; }
-  .manage-card { max-width: 480px; width: 100%; }
-  .manage-card { background: var(--bg-primary); border-radius: var(--radius-lg); border: 0.5px solid var(--border); padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .manage-card { background: var(--bg-primary); border-radius: var(--radius-lg); border: 0.5px solid var(--border); padding: 16px; display: flex; flex-direction: column; gap: 12px; max-width: 480px; width: 100%; }
   .manage-card-header { display: flex; align-items: center; gap: 12px; }
   .manage-avatar-lg { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 600; flex-shrink: 0; }
   .manage-name { font-size: 15px; font-weight: 500; }
@@ -239,33 +253,31 @@
   .manage-fields { display: flex; flex-direction: column; gap: 8px; }
   .manage-field label { font-size: 10px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.04em; display: block; margin-bottom: 3px; }
   .manage-actions { display: flex; gap: 8px; padding-top: 4px; border-top: 0.5px solid var(--border); }
+  .color-swatches { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0 14px; }
+  .color-swatch { width: 28px; height: 28px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: transform 0.1s; }
+  .color-swatch:hover, .color-swatch.selected { transform: scale(1.15); border-color: var(--text-primary); }
 
-  /* ── DATE INPUT ICON ── */
-  input[type="date"]::-webkit-calendar-picker-indicator {
-    filter: invert(0.5);
-    cursor: pointer;
-    opacity: 0.7;
-  }
-  input[type="date"]::-webkit-calendar-picker-indicator:hover {
-    opacity: 1;
-  }
-  @media (prefers-color-scheme: dark) {
-    input[type="date"]::-webkit-calendar-picker-indicator {
-      filter: invert(1);
-      opacity: 0.7;
-    }
-  }
+  /* ── EDIT MODE ── */
+  .edit-banner { background: #FAEEDA; border-radius: var(--radius-lg); border: 0.5px solid #FAC775; padding: 10px 16px; margin-bottom: 12px; display: none; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .edit-banner.active { display: flex; }
+  .edit-banner-text { font-size: 13px; font-weight: 500; color: #412402; flex: 1; }
+  .day-cell.edit-mode { cursor: grab !important; border: 1.5px dashed var(--border-md) !important; }
+  .day-cell.edit-mode:hover { opacity: 1 !important; transform: none !important; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+  .day-cell.drag-over { border: 2px dashed #412402 !important; opacity: 0.7; }
+  .day-cell.dragging { opacity: 0.4; }
+  @media (prefers-color-scheme: dark) { .edit-banner { background: #2A1800; border-color: #854F0B; } .edit-banner-text { color: #FAC775; } }
 
-  /* ── CALENDAR DATES ── */
-  .day-date { font-size: 9px; color: var(--text-tertiary); margin-bottom: 1px; }
-  .day-cell.today { border: 2px solid #27AE60 !important; }
-  .day-cell.missed { border: 2px solid #E74C3C !important; }
-  .day-cell.skipped { opacity: 0.5; }
-  .day-cell.skipped .day-type::after { content: ' (skipped)'; font-size: 9px; }
-  .done-check { position: absolute; top: 4px; right: 5px; font-size: 11px; color: #27AE60; font-weight: 700; }
-  .day-cell.before-start { cursor: default !important; }
-  .day-cell.before-start:hover { opacity: 0.35 !important; transform: none !important; }
-  .day-cell { position: relative; }
+  /* ── EDIT DIALOG ── */
+  .edit-dialog-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 300; align-items: center; justify-content: center; padding: 20px; }
+  .edit-dialog-overlay.open { display: flex; }
+  .edit-dialog { background: var(--bg-primary); border-radius: var(--radius-lg); border: 0.5px solid var(--border); padding: 20px; max-width: 580px; width: 100%; max-height: 90vh; overflow-y: auto; }
+  .edit-block-row { display: grid; grid-template-columns: 100px 1fr 80px 28px 28px 28px; gap: 6px; align-items: start; margin-bottom: 10px; }
+  .edit-block-detail { grid-column: 1 / -1; }
+  .edit-block-detail textarea { width: 100%; padding: 5px 7px; border-radius: var(--radius); border: 0.5px solid var(--border-md); background: var(--bg-secondary); font-size: 12px; color: var(--text-primary); font-family: var(--font); resize: vertical; min-height: 52px; line-height: 1.5; }
+  .edit-block-row select, .edit-block-row input { padding: 5px 7px; border-radius: var(--radius); border: 0.5px solid var(--border-md); background: var(--bg-secondary); font-size: 12px; color: var(--text-primary); font-family: var(--font); width: 100%; }
+  .edit-block-btn { width: 26px; height: 26px; border-radius: var(--radius); border: 0.5px solid var(--border-md); background: none; cursor: pointer; font-size: 12px; color: var(--text-secondary); display: flex; align-items: center; justify-content: center; }
+  .edit-block-btn:hover { background: var(--bg-secondary); color: var(--text-primary); }
+  .edit-block-btn.danger:hover { background: #FBEAF0; color: #993556; border-color: #993556; }
 </style>
 </head>
 <body>
@@ -274,6 +286,13 @@
   <!-- ATHLETE BAR -->
   <div class="athlete-bar" id="athleteBar">
     <button class="add-athlete-btn" onclick="openNewAthleteModal()">+ Add athlete</button>
+  </div>
+
+  <!-- EDIT MODE BANNER -->
+  <div class="edit-banner" id="editBanner">
+    <span class="edit-banner-text">&#9998; Edit mode &mdash; drag days to swap, click to edit</span>
+    <button class="btn" onclick="undoEdit()" id="undoBtn" style="font-size:12px">&#8630; Undo</button>
+    <button class="btn primary" onclick="exitEditMode()" style="font-size:12px">Done editing</button>
   </div>
 
   <!-- HEADER -->
@@ -407,7 +426,6 @@
     <div class="manage-grid" id="manageGrid"></div>
   </div>
 
-
 </div>
 
 <!-- MODAL OVERLAY -->
@@ -421,6 +439,40 @@
     <div class="modal-header">
       <div><div class="modal-title">Add athlete</div><div class="modal-sub">Each athlete gets their own plans, zones, and activity log</div></div>
       <button class="modal-close" onclick="closeAthleteModal()">✕</button>
+    </div>
+    <div style="margin-bottom:12px">
+      <div class="log-field" style="margin-bottom:10px"><label>Name</label><input class="log-input" id="newAthleteName" placeholder="e.g. Alex" style="margin:0"></div>
+      <div class="log-field" style="margin-bottom:6px"><label>Sport / Focus</label>
+        <select class="log-input" id="newAthleteSport" style="margin:0">
+          <option value="running">Running</option>
+          <option value="cycling">Cycling / MTB</option>
+          <option value="triathlon">Triathlon</option>
+          <option value="swimming">Swimming</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="log-field"><label>Avatar color</label>
+        <div class="color-swatches" id="colorSwatches"></div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn primary" onclick="createAthlete()">Create athlete</button>
+      <button class="btn" onclick="closeAthleteModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT DAY DIALOG -->
+<div class="edit-dialog-overlay" id="editDayOverlay">
+  <div class="edit-dialog" id="editDayDialog"></div>
+</div>
+
+<!-- NEW ATHLETE MODAL -->
+<div class="modal-overlay" id="athleteModalOverlay" onclick="closeAthleteModalOutside(event)">
+  <div class="modal" id="athleteModalContent">
+    <div class="modal-header">
+      <div><div class="modal-title">Add athlete</div><div class="modal-sub">Each athlete gets their own plans, zones, and activity log</div></div>
+      <button class="modal-close" onclick="closeAthleteModal()">&#x2715;</button>
     </div>
     <div style="margin-bottom:12px">
       <div class="log-field" style="margin-bottom:10px"><label>Name</label><input class="log-input" id="newAthleteName" placeholder="e.g. Alex" style="margin:0"></div>
@@ -470,87 +522,19 @@ const ZONE_DEFS_RUNNING = [
   {name:'Z5 — VO2max',pct:'93–100% max HR',bg:'#EEEDFE',tc:'#26215C'},
 ];
 
-const EXAMPLE_TEXTS = {
-  ultra: `Ultra Marathon 18-Week Training Plan — 50K goal
-
-Phase 1 — Base (Weeks 1-6)
-Week 1
-Mon: Rest
-Tue: Easy run 45 min (Z2)
-Wed: Strength + core 45 min
-Thu: Easy run 60 min with strides at end
-Fri: Rest
-Sat: Long run 12 miles — easy effort
-Sun: Recovery jog 30 min
-
-Week 2
-Mon: Rest
-Tue: Easy run 50 min
-Wed: Strength
-Thu: Tempo run — 2×10 min at half marathon effort
-Fri: Rest
-Sat: Long run 14 miles — easy
-Sun: Recovery 30 min
-
-Phase 2 — Build (Weeks 7-12)
-Week 7
-Mon: Rest
-Tue: Track — 8×800m at 5K pace, 90s rest
-Wed: Easy 40 min + strength
-Thu: Medium long run 10 miles
-Fri: Rest
-Sat: Long run 18 miles with last 3 miles at marathon pace
-Sun: Easy 40 min`,
-
-  triathlon: `Sprint Triathlon 8-Week Plan
-
-Week 1 — Base
-Monday: Rest
-Tuesday: Swim 2000m easy (300m warmup, 8×200m @ 80%, 200m cooldown)
-Wednesday: Bike 45 min easy Z2
-Thursday: Run 30 min easy
-Friday: Rest
-Saturday: Brick — Bike 60 min + immediate Run 20 min
-Sunday: Long swim 2500m easy
-
-Week 2
-Monday: Rest
-Tuesday: Swim intervals 2200m (400 WU, 10×100m fast, 400 CD)
-Wednesday: Bike 55 min with 3×5 min threshold efforts
-Thursday: Run 35 min easy + 4×30s strides
-Friday: Rest
-Saturday: Brick — Bike 75 min + Run 25 min
-Sunday: Easy recovery swim 1500m`,
-
-  cycling: `12-Week Road Cycling Base Block
-
-Phase 1 — Foundation (Weeks 1-4)
-Week 1
-Mon: Off
-Tue: 1hr — Zone 2 endurance
-Wed: 45 min — easy recovery spin
-Thu: 1.5hr — Zone 2, include 2×10 min sweetspot (88-93% FTP)
-Fri: Off
-Sat: 3hr — long steady ride Zone 2
-Sun: 1hr — easy endurance
-
-Week 2  
-Mon: Off
-Tue: 1hr — Sweetspot 3×10 min
-Wed: 45 min easy
-Thu: 1.5hr — 2×20 min sweetspot
-Fri: Off
-Sat: 3.5hr — long ride with some climbing
-Sun: 1hr easy`
-};
 
 // ─── STATE ───────────────────────────────────────────────────────────────────
-let appState = { athletes: [], currentAthleteId: null, anthropicKey: '' };
+let editMode = false;
+let editHistory = [];
+let dragSourceKey = null;
+let editBlocks = [];
+let editingKey = null;
 let pendingImport = null;
+
+let appState = { athletes: [], currentAthleteId: null, anthropicKey: '' };
 
 function loadAppState() {
   try { const s = localStorage.getItem('training_hub_v2'); if (s) appState = {...appState, ...JSON.parse(s)}; } catch(e) {}
-  // Migrate old athlete records that may be missing newer fields
   appState.athletes.forEach(a => {
     if (a.planStartDate === undefined) a.planStartDate = null;
     if (!a.skipped) a.skipped = [];
@@ -575,29 +559,15 @@ function defaultAthleteData(sport) {
     completed: [],
     skipped: [],
     weeks: [],
+    planStartDate: null,
     planName: '',
     sport: sport || 'cycling',
-    planStartDate: null,
     stravaClientId: null,
     stravaConnected: false,
   };
 }
 
 // ─── ATHLETE MANAGEMENT ──────────────────────────────────────────────────────
-function renderAthleteBar() {
-  const bar = document.getElementById('athleteBar');
-  let html = appState.athletes.map(a => {
-    const active = a.id === appState.currentAthleteId;
-    const initials = a.name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
-    const ci = a.colorIdx || 0;
-    return `<button class="athlete-chip ${active ? 'active':''}" onclick="selectAthlete('${a.id}')">
-      <div class="athlete-avatar" style="background:${AVATAR_COLORS[ci]};color:${AVATAR_TEXT[ci]}">${initials}</div>
-      ${a.name}
-    </button>`;
-  }).join('');
-  html += `<button class="add-athlete-btn" onclick="openNewAthleteModal()">+ Add athlete</button>`;
-  bar.innerHTML = html;
-}
 
 function selectAthlete(id) {
   appState.currentAthleteId = id;
@@ -686,53 +656,38 @@ function buildPlan() {
       const key = `w${wi}d${di}`;
       const done = a.completed.includes(key);
       const skipped = a.skipped && a.skipped.includes(key);
-
-      // Calculate calendar date for this cell
-      // Start date is the exact first day of the plan (day 0 = start date regardless of weekday)
-      // Days before the start date in week 1 are shown greyed out as inactive
-      let dateStr = '';
-      let cellClass = '';
-      let beforeStart = false;
+      let dateStr = '', cellClass = '', beforeStart = false;
       if (a.planStartDate) {
         const DAY_OFFSETS = {mon:0,tue:1,wed:2,thu:3,fri:4,sat:5,sun:6};
         const startDate = new Date(a.planStartDate + 'T12:00:00');
-
-        // What day of week (Mon=0) is the start date?
         const startDow = (startDate.getDay() + 6) % 7;
-
-        // Find this day's Mon-based offset
-        const dayName = (day.name || 'mon').toLowerCase().slice(0,3);
+        const dayName = (day.name||'mon').toLowerCase().slice(0,3);
         const dayDow = DAY_OFFSETS[dayName] !== undefined ? DAY_OFFSETS[dayName] : di;
-
-        // Week 0 Monday = startDate minus startDow days (same anchor as before)
-        const week0Monday = new Date(startDate.getTime() - startDow * 86400000);
-
-        // This cell's actual calendar date
-        const cellDate = new Date(week0Monday.getTime() + (wi * 7 + dayDow) * 86400000);
-
-        const today = new Date();
-        today.setHours(12,0,0,0);
+        const week0Mon = new Date(startDate.getTime() - startDow * 86400000);
+        const cellDate = new Date(week0Mon.getTime() + (wi * 7 + dayDow) * 86400000);
+        const today = new Date(); today.setHours(12,0,0,0);
         const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
         dateStr = months[cellDate.getMonth()] + ' ' + cellDate.getDate();
-
-        // Is this cell before the plan start date?
         beforeStart = cellDate < startDate;
-
         const isPast = cellDate < today;
         const isToday = cellDate.toDateString() === today.toDateString();
         const isRest = day.type === 'rest';
-
         if (beforeStart) cellClass = 'before-start';
         else if (isToday) cellClass = 'today';
         else if (isPast && !done && !skipped && !isRest) cellClass = 'missed';
         else if (skipped) cellClass = 'skipped';
       }
-
-      html += `<div class="day-cell t-${beforeStart ? 'rest' : (day.type||'rest')} ${cellClass}" onclick="${beforeStart ? '' : `openDay(${wi},${di})`}" id="cell_${key}" style="${beforeStart ? 'opacity:0.35;cursor:default;' : ''}">
+      const editAttrs = editMode && !beforeStart
+        ? `draggable="true" ondragstart="onDragStart(event,'${key}')" ondragover="onDragOver(event,'${key}')" ondragleave="onDragLeave('${key}')" ondrop="onDrop(event,'${key}')" ondragend="onDragEnd()"`
+        : '';
+      const clickFn = beforeStart ? '' : (editMode ? `openEditDay(${wi},${di})` : `openDay(${wi},${di})`);
+      const editClass = editMode && !beforeStart ? 'edit-mode' : '';
+      html += `<div class="day-cell t-${beforeStart?'rest':(day.type||'rest')} ${cellClass} ${editClass}" onclick="${clickFn}" id="cell_${key}" ${editAttrs} style="${beforeStart?'opacity:0.35;cursor:default;':''}">
         ${dateStr ? `<div class="day-date">${dateStr}</div>` : ''}
         <div class="day-name">${day.name||''}</div>
         ${beforeStart ? '' : `<div class="day-type">${day.title||''}</div><div class="day-detail">${day.detail||''}</div>`}
         ${done && !beforeStart ? '<div class="done-check">&#10003;</div>' : ''}
+        ${day.coachNote && !editMode && !beforeStart ? '<div style="font-size:9px;color:var(--text-tertiary);margin-top:3px">&#128172;</div>' : ''}
       </div>`;
     });
     html += `</div></div>`;
@@ -829,17 +784,6 @@ function logActivity(key, title) {
   updateMetrics();
 }
 
-function skipWorkout(key) {
-  const a = currentAthlete();
-  if (!a) return;
-  if (!a.skipped) a.skipped = [];
-  if (!a.skipped.includes(key)) a.skipped.push(key);
-  a.completed = a.completed.filter(k => k !== key);
-  saveAppState();
-  closeModal();
-  buildPlan();
-}
-
 // ─── ZONES ───────────────────────────────────────────────────────────────────
 function updateZones() {
   const a = currentAthlete();
@@ -876,6 +820,17 @@ function updateZones() {
     });
   }
   document.getElementById('zoneTable').innerHTML = rows;
+}
+
+function skipWorkout(key) {
+  const a = currentAthlete();
+  if (!a) return;
+  if (!a.skipped) a.skipped = [];
+  if (!a.skipped.includes(key)) a.skipped.push(key);
+  a.completed = a.completed.filter(k => k !== key);
+  saveAppState();
+  closeModal();
+  buildPlan();
 }
 
 function saveFTP() {
@@ -943,313 +898,9 @@ function updateMetrics() {
 }
 
 // ─── IMPORT / AI ─────────────────────────────────────────────────────────────
-function fillExample(key) {
-  document.getElementById('importText').value = EXAMPLE_TEXTS[key] || '';
-  if (key === 'ultra') { document.getElementById('importSport').value = 'running'; document.getElementById('importPlanName').value = '50K Ultra Plan'; }
-  if (key === 'triathlon') { document.getElementById('importSport').value = 'triathlon'; document.getElementById('importPlanName').value = 'Sprint Tri Plan'; }
-  if (key === 'cycling') { document.getElementById('importSport').value = 'cycling'; document.getElementById('importPlanName').value = 'Road Base Block'; }
-}
-
-function saveApiKey() {
-  const key = document.getElementById('apiKeyInput').value.trim();
-  if (!key) return;
-  appState.anthropicKey = key;
-  saveAppState();
-  document.getElementById('apiKeyInput').value = '';
-  document.getElementById('apiKeyStatus').textContent = '✓ Key saved — ready to parse plans.';
-  document.getElementById('apiKeyStatus').style.color = '#27500A';
-}
-
-async function importPlan() {
-  const a = currentAthlete();
-  if (!a) { alert('Please select or create an athlete first.'); return; }
-  const text = document.getElementById('importText').value.trim();
-  if (!text) { alert('Please paste a training plan first.'); return; }
-  const planName = document.getElementById('importPlanName').value.trim() || 'Training Plan';
-  const sport = document.getElementById('importSport').value;
-
-  const btn = document.getElementById('importBtn');
-  const status = document.getElementById('importStatus');
-  if (!appState.anthropicKey) {
-    status.className = 'import-status error';
-    status.textContent = 'Error: No API key saved. Enter your Anthropic API key in the box above first.';
-    return;
-  }
-  btn.disabled = true;
-  btn.innerHTML = '<span class="ai-spinner"></span>Parsing...';
-  status.className = 'import-status';
-  status.textContent = 'Sending to AI parser…';
-
-  const systemPrompt = `You are a training plan parser. Convert the training plan text into a structured JSON object.
-
-Return ONLY valid JSON, no markdown, no backticks, no explanation.
-
-The JSON must have this exact shape:
-{
-  "planName": "string",
-  "sport": "running|cycling|triathlon|swimming|other",
-  "phases": [
-    {
-      "label": "Phase 1",
-      "title": "Description",
-      "weeks": "Weeks 1-4",
-      "pill": "#hex_light_fill",
-      "pillText": "#hex_dark_text"
-    }
-  ],
-  "weeks": [
-    {
-      "phase": 0,
-      "label": "Week 1 — description",
-      "phaseInfo": { "label": "Phase 1", "title": "...", "weeks": "Weeks 1-X", "pill": "#E6F1FB", "pillText": "#0C447C" },
-      "days": [
-        {
-          "name": "Mon",
-          "type": "rest|endurance|intervals|tempo|recovery|strength|test|race|long",
-          "title": "Short title",
-          "detail": "Brief detail",
-          "workout": {
-            "blocks": [
-              { "z": "warmup|ss|rest|cooldown|vo2|long", "l": "block label", "d": "detail description", "t": "duration like '15 min' or '45 min'" }
-            ],
-            "tip": "coaching note"
-          }
-        }
-      ]
-    }
-  ]
-}
-
-Day type mapping:
-- rest/off → "rest"
-- easy/recovery/jog → "recovery" or "endurance"
-- long run/long ride → "long"
-- tempo/threshold/sweetspot → "tempo"
-- intervals/track/VO2/fartlek → "intervals"
-- strength/gym/core → "strength"
-- fitness test/FTP test/time trial → "test"
-- race/event/competition → "race"
-
-Phase pill colors: Phase1=#E6F1FB pillText=#0C447C, Phase2=#EAF3DE pillText=#27500A, Phase3=#FAEEDA pillText=#412402, Phase4=#EEEDFE pillText=#26215C
-
-For days without detailed workout blocks, set workout to null.
-For days with workouts, create appropriate blocks (warmup, main set, cooldown).
-Always include all 7 days (Mon-Sun).
-Sport is: ${sport}
-Plan name suggestion: ${planName}`;
-
-  try {
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': appState.anthropicKey || '',
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true',
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 16000,
-        system: systemPrompt,
-        messages: [{ role: 'user', content: text }]
-      })
-    });
-    const data = await resp.json();
-    if (data.error) throw new Error(data.error.message || 'API error');
-    const raw = data.content.map(c => c.text || '').join('');
-    let clean = raw.replace(/```json|```/g,'').trim();
-    // Find the outermost JSON object in case there's extra text
-    const firstBrace = clean.indexOf('{');
-    const lastBrace = clean.lastIndexOf('}');
-    if (firstBrace !== -1 && lastBrace !== -1) clean = clean.slice(firstBrace, lastBrace + 1);
-    const parsed = JSON.parse(clean);
-
-    if (!parsed.weeks || !Array.isArray(parsed.weeks)) throw new Error('Invalid response structure');
-
-    pendingImport = { parsed, sport };
-    status.className = 'import-status success';
-    status.textContent = `✓ Parsed ${parsed.weeks.length} weeks with ${parsed.weeks.reduce((s,w)=>s+w.days.filter(d=>d.type!=='rest').length,0)} workouts.`;
-
-    // Show preview
-    let preview = `<div style="font-size:13px;color:var(--text-secondary);margin-bottom:12px">${parsed.weeks.length} weeks · ${sport} · ${planName}</div>`;
-    parsed.weeks.slice(0,3).forEach(w => {
-      preview += `<div style="margin-bottom:10px"><div class="week-label">${w.label}</div><div style="display:flex;gap:6px;flex-wrap:wrap">`;
-      w.days.forEach(d => {
-        preview += `<span class="zone-pill t-${d.type}" style="font-size:11px;padding:3px 8px">${d.name}: ${d.title}</span>`;
-      });
-      preview += `</div></div>`;
-    });
-    if (parsed.weeks.length > 3) preview += `<div style="font-size:12px;color:var(--text-tertiary)">…and ${parsed.weeks.length-3} more weeks</div>`;
-    document.getElementById('importPreviewContent').innerHTML = preview;
-    document.getElementById('importPreview').style.display = 'block';
-  } catch(e) {
-    status.className = 'import-status error';
-    status.textContent = 'Error: ' + (e.message || 'Could not parse plan. Try pasting more structured text.');
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = 'Parse with AI';
-  }
-}
-
-function confirmImport() {
-  const a = currentAthlete();
-  if (!a || !pendingImport) return;
-  const { parsed } = pendingImport;
-  a.weeks = parsed.weeks;
-  a.planName = parsed.planName || document.getElementById('importPlanName').value || 'Training Plan';
-  a.sport = parsed.sport || a.sport;
-  a.completed = [];
-  a.activities = [];
-  saveAppState();
-  document.getElementById('importPreview').style.display = 'none';
-  renderHeaderForAthlete();
-  buildPlan();
-  updateMetrics();
-  showPage('plan', document.querySelectorAll('.nav-btn')[0]);
-  pendingImport = null;
-}
 
 
-// ─── MANAGE TAB ──────────────────────────────────────────────────────────────
-function renderManageTab() {
-  const grid = document.getElementById('manageGrid');
-  if (!grid) return;
-  const a = currentAthlete();
-  if (!a) {
-    grid.innerHTML = '<div class="empty">No athlete selected. Use "+ Add athlete" to create one.</div>';
-    return;
-  }
-  grid.innerHTML = [a].map(a => {
-    const ci = a.colorIdx || 0;
-    const initials = a.name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
-    const sportLabels = {running:'Running',cycling:'Cycling / MTB',triathlon:'Triathlon',swimming:'Swimming',other:'Other'};
-    const workouts = a.weeks ? a.weeks.reduce((s,w)=>s+w.days.filter(d=>d.type!=='rest').length,0) : 0;
-    const done = a.completed ? a.completed.length : 0;
-    return `<div class="manage-card" id="mcard_${a.id}">
-      <div class="manage-card-header">
-        <div class="manage-avatar-lg" style="background:${AVATAR_COLORS[ci]};color:${AVATAR_TEXT[ci]}">${initials}</div>
-        <div>
-          <div class="manage-name">${a.name}</div>
-          <div class="manage-meta">${sportLabels[a.sport]||'Training'} · ${a.planName||'No plan'} · ${done}/${workouts} workouts</div>
-        </div>
-      </div>
-      <div class="manage-fields">
-        <div class="manage-field">
-          <label>Name</label>
-          <input class="log-input" id="mname_${a.id}" value="${a.name}" style="margin:0">
-        </div>
-        <div class="manage-field">
-          <label>Sport</label>
-          <select class="log-input" id="msport_${a.id}" style="margin:0">
-            <option value="running" ${a.sport==='running'?'selected':''}>Running</option>
-            <option value="cycling" ${a.sport==='cycling'?'selected':''}>Cycling / MTB</option>
-            <option value="triathlon" ${a.sport==='triathlon'?'selected':''}>Triathlon</option>
-            <option value="swimming" ${a.sport==='swimming'?'selected':''}>Swimming</option>
-            <option value="other" ${a.sport==='other'?'selected':''}>Other</option>
-          </select>
-        </div>
-        <div class="manage-field">
-          <label>Plan start date</label>
-          <div style="display:flex;gap:6px;align-items:center">
-            <input id="mstart_${a.id}" type="date" value="${a.planStartDate||''}" onchange="previewStartDate('${a.id}',this.value)" style="flex:1;padding:8px 10px;border-radius:var(--radius);border:0.5px solid var(--border-md);background:var(--bg-primary);font-size:13px;color:var(--text-primary);font-family:var(--font);">
-            <button class="btn" onclick="setStartToday('${a.id}')" style="white-space:nowrap;font-size:11px">Set to today</button>
-          </div>
-        </div>
-        <div class="manage-field">
-          <label>Avatar color</label>
-          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">
-            ${AVATAR_COLORS.map((c,i) => `<div onclick="setAthleteColor('${a.id}',${i},this)" style="width:24px;height:24px;border-radius:50%;background:${c};cursor:pointer;border:2px solid ${i===ci?'var(--text-primary)':'transparent'};transition:transform 0.1s" onmouseover="this.style.transform='scale(1.15)'" onmouseout="this.style.transform='scale(1)'"></div>`).join('')}
-          </div>
-        </div>
-      </div>
-      <div class="manage-actions">
-        <button class="btn primary" onclick="saveAthleteEdits('${a.id}')">Save changes</button>
-        <button class="btn danger" onclick="deleteAthlete('${a.id}')">Delete</button>
-      </div>
-    </div>`;
-  }).join('');
-}
 
-function setAthleteColor(id, colorIdx, el) {
-  // Update UI immediately
-  const card = document.getElementById('mcard_' + id);
-  card.querySelectorAll('[onclick^="setAthleteColor"]').forEach(d => d.style.border = '2px solid transparent');
-  el.style.border = '2px solid var(--text-primary)';
-  // Store on element for save
-  el.closest('.manage-card').dataset.pendingColor = colorIdx;
-  // Update avatar preview
-  const avatar = card.querySelector('.manage-avatar-lg');
-  const initials = avatar.textContent;
-  avatar.style.background = AVATAR_COLORS[colorIdx];
-  avatar.style.color = AVATAR_TEXT[colorIdx];
-}
-
-function previewStartDate(id, value) {
-  const a = appState.athletes.find(x => x.id === id);
-  if (!a) return;
-  a.planStartDate = value || null;
-  saveAppState();
-  if (appState.currentAthleteId === id) buildPlan();
-}
-
-function setStartToday(id) {
-  const today = new Date().toISOString().split('T')[0];
-  document.getElementById('mstart_' + id).value = today;
-  previewStartDate(id, today);
-}
-
-function saveAthleteEdits(id) {
-  const a = appState.athletes.find(x => x.id === id);
-  if (!a) return;
-  const name = document.getElementById('mname_' + id).value.trim();
-  const sport = document.getElementById('msport_' + id).value;
-  if (!name) { alert('Name cannot be empty.'); return; }
-  const card = document.getElementById('mcard_' + id);
-  const pendingColor = card.dataset.pendingColor;
-  a.name = name;
-  a.sport = sport;
-  const startDate = document.getElementById('mstart_' + id).value;
-  // Ensure date is in YYYY-MM-DD format
-  a.planStartDate = startDate ? startDate : null;
-  if (pendingColor !== undefined) a.colorIdx = parseInt(pendingColor);
-  saveAppState();
-  renderAthleteBar();
-  renderManageTab();
-  if (appState.currentAthleteId === id) {
-    renderHeaderForAthlete();
-    buildPlan();
-    updateZones();
-    updateMetrics();
-  }
-  // Show save confirmation on the button
-  const btn = document.querySelector(`#mcard_${id} .btn.primary`);
-  if (btn) {
-    const orig = btn.textContent;
-    btn.textContent = '✓ Saved';
-    btn.style.background = '#27AE60';
-    setTimeout(() => { btn.textContent = orig; btn.style.background = ''; }, 2000);
-  }
-}
-
-function deleteAthlete(id) {
-  const a = appState.athletes.find(x => x.id === id);
-  if (!a) return;
-  if (!confirm(`Delete "${a.name}" and all their data? This cannot be undone.`)) return;
-  appState.athletes = appState.athletes.filter(x => x.id !== id);
-  if (appState.currentAthleteId === id) {
-    appState.currentAthleteId = appState.athletes.length > 0 ? appState.athletes[0].id : null;
-  }
-  saveAppState();
-  renderAthleteBar();
-  renderManageTab();
-  if (appState.currentAthleteId) {
-    selectAthlete(appState.currentAthleteId);
-  } else {
-    document.getElementById('headerName').textContent = 'Training Hub';
-    document.getElementById('headerSub').textContent = 'Select or create an athlete to get started';
-    document.getElementById('page-plan').innerHTML = '<div class="no-plan"><div class="no-plan-icon">&#128100;</div><h2>No athletes yet</h2><p>Create an athlete profile to get started.</p><button class="btn primary" onclick="openNewAthleteModal()">Add athlete</button></div>';
-  }
-}
 
 // ─── STRAVA ──────────────────────────────────────────────────────────────────
 function saveClientId() {
@@ -1271,13 +922,6 @@ function updateStravaUI() {
 }
 
 // ─── NAV ─────────────────────────────────────────────────────────────────────
-function showPage(id, btn) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById('page-' + id).classList.add('active');
-  if (btn) btn.classList.add('active');
-  if (id === 'manage') renderManageTab();
-}
 
 // ─── SEED: import existing MTB plan for the son ──────────────────────────────
 const MTB_WEEKS = [
@@ -1419,20 +1063,463 @@ loadAppState();
 
 // Seed existing MTB plan if no athletes yet
 if (appState.athletes.length === 0) {
-  const sonId = 'a_son';
   appState.athletes = [{
-    id: sonId, name: 'Son', sport: 'cycling', colorIdx: 1,
+    id: 'a_son', name: 'Son', sport: 'cycling', colorIdx: 1,
     ftp: 200, ftpHistory: [], activities: [], completed: [], skipped: [],
-    planName: '12-Week MTB Recovery Plan',
-    weeks: MTB_WEEKS,
-    stravaClientId: null, stravaConnected: false
+    planStartDate: null, planName: '12-Week MTB Recovery Plan',
+    weeks: MTB_WEEKS, stravaClientId: null, stravaConnected: false
   }];
-  appState.currentAthleteId = sonId;
+  appState.currentAthleteId = 'a_son';
   saveAppState();
 }
 
 renderAthleteBar();
-selectAthlete(appState.currentAthleteId || appState.athletes[0]?.id);
+selectAthlete(appState.currentAthleteId || (appState.athletes[0] && appState.athletes[0].id));
+if (appState.anthropicKey) {
+  var ks = document.getElementById('apiKeyStatus');
+  if (ks) { ks.textContent = '\u2713 API key already saved.'; ks.style.color = '#27AE60'; }
+}
+
+// ─── ATHLETE BAR ─────────────────────────────────────────────────────────────
+function renderAthleteBar() {
+  const bar = document.getElementById('athleteBar');
+  let html = appState.athletes.map(a => {
+    const active = a.id === appState.currentAthleteId;
+    const initials = a.name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+    const ci = a.colorIdx || 0;
+    return '<button class="athlete-chip ' + (active?'active':'') + '" onclick="selectAthlete(\'' + a.id + '\')">'
+      + '<div class="athlete-avatar" style="background:' + AVATAR_COLORS[ci] + ';color:' + AVATAR_TEXT[ci] + '">' + initials + '</div>'
+      + a.name + '</button>';
+  }).join('');
+  html += '<button class="add-athlete-btn" onclick="openNewAthleteModal()">+ Add athlete</button>';
+  bar.innerHTML = html;
+}
+
+// ─── EDIT MODE ────────────────────────────────────────────────────────────────
+function enterEditMode(id) {
+  selectAthlete(id);
+  editMode = true;
+  editHistory = [];
+  document.getElementById('editBanner').classList.add('active');
+  updateUndoBtn();
+  showPage('plan', document.querySelectorAll('.nav-btn')[0]);
+  buildPlan();
+}
+function exitEditMode() {
+  editMode = false;
+  editHistory = [];
+  document.getElementById('editBanner').classList.remove('active');
+  buildPlan();
+}
+function updateUndoBtn() {
+  const btn = document.getElementById('undoBtn');
+  btn.disabled = editHistory.length === 0;
+  btn.style.opacity = editHistory.length === 0 ? '0.4' : '1';
+  btn.textContent = editHistory.length > 0 ? ('\u21A9 Undo (' + editHistory.length + ')') : '\u21A9 Undo';
+}
+function pushHistory(snap) {
+  editHistory.push(snap);
+  if (editHistory.length > 50) editHistory.shift();
+  updateUndoBtn();
+}
+function undoEdit() {
+  if (!editHistory.length) return;
+  const a = currentAthlete();
+  if (!a) return;
+  a.weeks = editHistory.pop();
+  saveAppState();
+  updateUndoBtn();
+  buildPlan();
+}
+function deepClone(obj) { return JSON.parse(JSON.stringify(obj)); }
+
+// ─── DRAG AND DROP ────────────────────────────────────────────────────────────
+function onDragStart(e, key) {
+  dragSourceKey = key;
+  e.dataTransfer.effectAllowed = 'move';
+  setTimeout(function() {
+    var el = document.getElementById('cell_' + key);
+    if (el) el.classList.add('dragging');
+  }, 0);
+}
+function onDragOver(e, key) {
+  e.preventDefault();
+  if (key !== dragSourceKey) {
+    document.querySelectorAll('.day-cell').forEach(function(c){ c.classList.remove('drag-over'); });
+    var el = document.getElementById('cell_' + key);
+    if (el) el.classList.add('drag-over');
+  }
+}
+function onDragLeave(key) {
+  var el = document.getElementById('cell_' + key);
+  if (el) el.classList.remove('drag-over');
+}
+function onDrop(e, targetKey) {
+  e.preventDefault();
+  document.querySelectorAll('.day-cell').forEach(function(c){ c.classList.remove('drag-over'); c.classList.remove('dragging'); });
+  if (!dragSourceKey || dragSourceKey === targetKey) return;
+  var a = currentAthlete();
+  if (!a) return;
+  var src = dragSourceKey.match(/w(\d+)d(\d+)/);
+  var tgt = targetKey.match(/w(\d+)d(\d+)/);
+  if (!src || !tgt) return;
+  var swi = parseInt(src[1]), sdi = parseInt(src[2]);
+  var twi = parseInt(tgt[1]), tdi = parseInt(tgt[2]);
+  pushHistory(deepClone(a.weeks));
+  var srcDay = a.weeks[swi].days[sdi];
+  var tgtDay = a.weeks[twi].days[tdi];
+  var srcName = srcDay.name, tgtName = tgtDay.name;
+  var srcClone = deepClone(srcDay), tgtClone = deepClone(tgtDay);
+  a.weeks[swi].days[sdi] = Object.assign(tgtClone, {name: srcName});
+  a.weeks[twi].days[tdi] = Object.assign(srcClone, {name: tgtName});
+  saveAppState();
+  dragSourceKey = null;
+  buildPlan();
+}
+function onDragEnd() {
+  dragSourceKey = null;
+  document.querySelectorAll('.day-cell').forEach(function(c){ c.classList.remove('dragging'); c.classList.remove('drag-over'); });
+}
+
+// ─── EDIT DAY DIALOG ─────────────────────────────────────────────────────────
+var BLOCK_ZONES = ['warmup','ss','rest','cooldown','vo2','long'];
+var BLOCK_LABELS = {warmup:'Warmup',ss:'Sweetspot',rest:'Recovery',cooldown:'Cooldown',vo2:'VO2max',long:'Long'};
+var DAY_TYPES = ['rest','recovery','endurance','long','tempo','intervals','strength','test','race'];
+
+function buildZoneOptions(selected) {
+  return BLOCK_ZONES.map(function(z) {
+    return '<option value="' + z + '"' + (z === selected ? ' selected' : '') + '>' + (BLOCK_LABELS[z]||z) + '</option>';
+  }).join('');
+}
+
+function buildBlockRow(b, bi) {
+  var zOpts = BLOCK_ZONES.map(function(z) {
+    return '<option value="' + z + '"' + (b.z===z?' selected':'') + '>' + (BLOCK_LABELS[z]||z) + '</option>';
+  }).join('');
+  return '<div class="edit-block-row" id="brow_' + bi + '">'
+    + '<select data-bi="' + bi + '" data-f="z" onchange="updateBlock(this)">' + zOpts + '</select>'
+    + '<input data-bi="' + bi + '" data-f="l" placeholder="Label" value="' + (b.l||'').replace(/"/g,'&quot;') + '" oninput="updateBlock(this)">'
+    + '<input data-bi="' + bi + '" data-f="t" placeholder="10 min" value="' + (b.t||'').replace(/"/g,'&quot;') + '" oninput="updateBlock(this)">'
+    + '<button class="edit-block-btn" onclick="moveBlock(' + bi + ',-1)">&#8593;</button>'
+    + '<button class="edit-block-btn" onclick="moveBlock(' + bi + ',1)">&#8595;</button>'
+    + '<button class="edit-block-btn danger" onclick="removeBlock(' + bi + ')">&#x2715;</button>'
+    + '<div class="edit-block-detail"><textarea data-bi="' + bi + '" data-f="d" placeholder="Describe this step in detail..." oninput="updateBlock(this)">' + (b.d||'').replace(/</g,'&lt;') + '</textarea></div>'
+    + '</div>';
+}
+
+function renderBlockRows() {
+  document.getElementById('blockRows').innerHTML = editBlocks.map(function(b,bi){ return buildBlockRow(b,bi); }).join('');
+}
+
+function updateBlock(el) {
+  var bi = parseInt(el.dataset.bi);
+  var field = el.dataset.f;
+  if (editBlocks[bi] !== undefined) editBlocks[bi][field] = el.value;
+}
+function addBlock() {
+  editBlocks.push({z:'rest',l:'New step',d:'Description',t:'10 min'});
+  renderBlockRows();
+}
+function removeBlock(bi) {
+  editBlocks.splice(bi,1);
+  renderBlockRows();
+}
+function moveBlock(bi, dir) {
+  var ni = bi + dir;
+  if (ni < 0 || ni >= editBlocks.length) return;
+  var tmp = editBlocks[bi]; editBlocks[bi] = editBlocks[ni]; editBlocks[ni] = tmp;
+  renderBlockRows();
+}
+function toggleBlocksSection() {
+  var type = document.getElementById('edit_type').value;
+  document.getElementById('blocksSection').style.display = type === 'rest' ? 'none' : '';
+}
+
+function openEditDay(wi, di) {
+  var a = currentAthlete();
+  if (!a || !a.weeks[wi]) return;
+  var day = a.weeks[wi].days[di];
+  editingKey = 'w' + wi + 'd' + di;
+  editBlocks = day.workout && day.workout.blocks ? deepClone(day.workout.blocks) : [];
+  var tip = day.workout && day.workout.tip ? day.workout.tip : '';
+  var coachNote = day.coachNote || '';
+  var isRest = day.type === 'rest';
+
+  var typeOpts = DAY_TYPES.map(function(t){
+    return '<option value="' + t + '"' + (day.type===t?' selected':'') + '>' + t.charAt(0).toUpperCase()+t.slice(1) + '</option>';
+  }).join('');
+
+  var html = '<div class="modal-header">'
+    + '<div><div class="modal-title">Edit &mdash; Week ' + (wi+1) + ' ' + day.name + '</div>'
+    + '<div class="modal-sub">Changes save when you click Save changes</div></div>'
+    + '<button class="modal-close" onclick="closeEditDay()">&#x2715;</button></div>';
+
+  html += '<div style="display:grid;gap:10px;margin-bottom:14px">'
+    + '<div class="log-field"><label>Day type</label>'
+    + '<select class="log-input" id="edit_type" onchange="toggleBlocksSection()" style="margin:0">' + typeOpts + '</select></div>'
+    + '<div class="log-field"><label>Title</label>'
+    + '<input class="log-input" id="edit_title" value="' + (day.title||'').replace(/"/g,'&quot;') + '" style="margin:0"></div>'
+    + '<div class="log-field"><label>Detail</label>'
+    + '<input class="log-input" id="edit_detail" value="' + (day.detail||'').replace(/"/g,'&quot;') + '" style="margin:0"></div>'
+    + '</div>';
+
+  html += '<div id="blocksSection" style="' + (isRest?'display:none':'') + '">'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'
+    + '<div class="log-title" style="margin:0">Workout structure</div>'
+    + '<button class="btn" onclick="addBlock()" style="font-size:11px">+ Add step</button></div>'
+    + '<div style="font-size:10px;color:var(--text-tertiary);margin-bottom:8px;display:grid;grid-template-columns:100px 1fr 80px 28px 28px 28px;gap:6px">'
+    + '<span>Zone</span><span>Label</span><span>Duration</span><span></span><span></span><span></span></div>'
+    + '<div id="blockRows">' + editBlocks.map(function(b,bi){return buildBlockRow(b,bi);}).join('') + '</div>'
+    + '<div class="log-field" style="margin-top:10px"><label>Coaching tip shown in workout view</label>'
+    + '<input class="log-input" id="edit_tip" value="' + tip.replace(/"/g,'&quot;') + '" style="margin:0"></div>'
+    + '</div>';
+
+  html += '<div class="log-field" style="margin-top:12px">'
+    + '<label>Coach note (visible to athlete)</label>'
+    + '<textarea class="log-input" id="edit_coachnote" rows="3" style="margin:0;resize:vertical">' + coachNote + '</textarea></div>';
+
+  html += '<div style="display:flex;gap:8px;margin-top:16px">'
+    + '<button class="btn primary" onclick="saveEditDay(' + wi + ',' + di + ')">Save changes</button>'
+    + '<button class="btn" onclick="closeEditDay()">Cancel</button></div>';
+
+  document.getElementById('editDayDialog').innerHTML = html;
+  document.getElementById('editDayOverlay').classList.add('open');
+}
+
+function saveEditDay(wi, di) {
+  var a = currentAthlete();
+  if (!a) return;
+  pushHistory(deepClone(a.weeks));
+  var day = a.weeks[wi].days[di];
+  day.type = document.getElementById('edit_type').value;
+  day.title = document.getElementById('edit_title').value;
+  day.detail = document.getElementById('edit_detail').value;
+  day.coachNote = document.getElementById('edit_coachnote').value;
+  if (day.type !== 'rest' && editBlocks.length > 0) {
+    var tipEl = document.getElementById('edit_tip');
+    day.workout = {blocks: deepClone(editBlocks), tip: tipEl ? tipEl.value : ''};
+  } else if (day.type === 'rest') {
+    day.workout = null;
+  }
+  saveAppState();
+  closeEditDay();
+  buildPlan();
+}
+
+function closeEditDay() {
+  document.getElementById('editDayOverlay').classList.remove('open');
+  editingKey = null;
+  editBlocks = [];
+}
+
+// ─── MANAGE TAB ──────────────────────────────────────────────────────────────
+function renderManageTab() {
+  var grid = document.getElementById('manageGrid');
+  if (!grid) return;
+  var a = currentAthlete();
+  if (!a) { grid.innerHTML = '<div class="empty">No athlete selected. Use &ldquo;+ Add athlete&rdquo; to create one.</div>'; return; }
+  var ci = a.colorIdx || 0;
+  var initials = a.name.split(' ').map(function(w){return w[0];}).join('').toUpperCase().slice(0,2);
+  var sportLabels = {running:'Running',cycling:'Cycling / MTB',triathlon:'Triathlon',swimming:'Swimming',other:'Other'};
+  var workouts = a.weeks ? a.weeks.reduce(function(s,w){return s+w.days.filter(function(d){return d.type!=='rest';}).length;},0) : 0;
+  var done = a.completed ? a.completed.length : 0;
+  var colorSwatches = AVATAR_COLORS.map(function(c,i){
+    return '<div data-id="' + a.id + '" data-ci="' + i + '" onclick="setAthleteColorEl(this)" style="width:24px;height:24px;border-radius:50%;background:' + c + ';cursor:pointer;border:2px solid ' + (i===ci?'var(--text-primary)':'transparent') + ';transition:transform 0.1s" onmouseover="this.style.transform=\'scale(1.15)\'" onmouseout="this.style.transform=\'scale(1)\'"></div>';
+  }).join('');
+  var sportOpts = ['running','cycling','triathlon','swimming','other'].map(function(s){
+    return '<option value="' + s + '"' + (a.sport===s?' selected':'') + '>' + (sportLabels[s]||s) + '</option>';
+  }).join('');
+
+  grid.innerHTML = '<div class="manage-card" id="mcard_' + a.id + '">'
+    + '<div class="manage-card-header">'
+    + '<div class="manage-avatar-lg" style="background:' + AVATAR_COLORS[ci] + ';color:' + AVATAR_TEXT[ci] + '">' + initials + '</div>'
+    + '<div><div class="manage-name">' + a.name + '</div>'
+    + '<div class="manage-meta">' + (sportLabels[a.sport]||'Training') + ' &middot; ' + (a.planName||'No plan') + ' &middot; ' + done + '/' + workouts + ' workouts</div></div></div>'
+    + '<div class="manage-fields">'
+    + '<div class="manage-field"><label>Name</label><input class="log-input" id="mname_' + a.id + '" value="' + a.name + '" style="margin:0"></div>'
+    + '<div class="manage-field"><label>Sport</label><select class="log-input" id="msport_' + a.id + '" style="margin:0">' + sportOpts + '</select></div>'
+    + '<div class="manage-field"><label>Plan start date</label>'
+    + '<div style="display:flex;gap:6px;align-items:center">'
+    + '<input id="mstart_' + a.id + '" type="date" value="' + (a.planStartDate||'') + '" onchange="previewStartDate(this.dataset.aid,this.value)" data-aid="' + a.id + '" style="flex:1;padding:8px 10px;border-radius:var(--radius);border:0.5px solid var(--border-md);background:var(--bg-primary);font-size:13px;color:var(--text-primary);font-family:var(--font);">'
+    + '<button class="btn" data-aid="' + a.id + '" onclick="setStartToday(this.dataset.aid)" style="white-space:nowrap;font-size:11px">Set to today</button>'
+    + '</div></div>'
+    + '<div class="manage-field"><label>Avatar color</label><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">' + colorSwatches + '</div></div>'
+    + '</div>'
+    + '<div class="manage-actions">'
+    + '<button class="btn primary" data-aid="' + a.id + '" onclick="saveAthleteEdits(this.dataset.aid)">Save changes</button>'
+    + '<button class="btn" data-aid="' + a.id + '" onclick="enterEditMode(this.dataset.aid)">Edit plan</button>'
+    + '<button class="btn danger" data-aid="' + a.id + '" onclick="deleteAthlete(this.dataset.aid)">Delete</button>'
+    + '</div></div>';
+}
+
+function setAthleteColorEl(el) {
+  var id = el.dataset.id;
+  var colorIdx = parseInt(el.dataset.ci);
+  setAthleteColor(id, colorIdx, el);
+}
+
+function setAthleteColor(id, colorIdx, el) {
+  var card = document.getElementById('mcard_' + id);
+  card.querySelectorAll('[onmouseover]').forEach(function(d){ d.style.border = '2px solid transparent'; });
+  el.style.border = '2px solid var(--text-primary)';
+  card.dataset.pendingColor = colorIdx;
+  var avatar = card.querySelector('.manage-avatar-lg');
+  avatar.style.background = AVATAR_COLORS[colorIdx];
+  avatar.style.color = AVATAR_TEXT[colorIdx];
+}
+
+function setStartToday(id) {
+  var today = new Date().toISOString().split('T')[0];
+  document.getElementById('mstart_' + id).value = today;
+  previewStartDate(id, today);
+}
+
+function previewStartDate(id, value) {
+  var a = appState.athletes.find(function(x){ return x.id === id; });
+  if (!a) return;
+  a.planStartDate = value || null;
+  saveAppState();
+  if (appState.currentAthleteId === id) buildPlan();
+}
+
+function saveAthleteEdits(id) {
+  var a = appState.athletes.find(function(x){ return x.id === id; });
+  if (!a) return;
+  var name = document.getElementById('mname_' + id).value.trim();
+  if (!name) { alert('Name cannot be empty.'); return; }
+  var sport = document.getElementById('msport_' + id).value;
+  var startDate = document.getElementById('mstart_' + id).value;
+  var card = document.getElementById('mcard_' + id);
+  var pendingColor = card.dataset.pendingColor;
+  a.name = name;
+  a.sport = sport;
+  a.planStartDate = startDate || null;
+  if (pendingColor !== undefined) a.colorIdx = parseInt(pendingColor);
+  saveAppState();
+  renderAthleteBar();
+  renderManageTab();
+  if (appState.currentAthleteId === id) { renderHeaderForAthlete(); buildPlan(); updateZones(); updateMetrics(); }
+  var btn = document.querySelector('#mcard_' + id + ' .btn.primary');
+  if (btn) { var orig = btn.textContent; btn.textContent = '\u2713 Saved'; btn.style.background = '#27AE60'; setTimeout(function(){ btn.textContent = orig; btn.style.background = ''; }, 2000); }
+}
+
+function deleteAthlete(id) {
+  var a = appState.athletes.find(function(x){ return x.id === id; });
+  if (!a) return;
+  if (!confirm('Delete "' + a.name + '" and all their data? This cannot be undone.')) return;
+  appState.athletes = appState.athletes.filter(function(x){ return x.id !== id; });
+  if (appState.currentAthleteId === id) appState.currentAthleteId = appState.athletes.length > 0 ? appState.athletes[0].id : null;
+  saveAppState();
+  renderAthleteBar();
+  renderManageTab();
+  if (appState.currentAthleteId) selectAthlete(appState.currentAthleteId);
+  else {
+    document.getElementById('headerName').textContent = 'Training Hub';
+    document.getElementById('headerSub').textContent = 'Select or create an athlete to get started';
+    document.getElementById('page-plan').innerHTML = '<div class="no-plan"><div class="no-plan-icon">&#128100;</div><h2>No athletes yet</h2><p>Create an athlete profile to get started.</p><button class="btn primary" onclick="openNewAthleteModal()">Add athlete</button></div>';
+  }
+}
+
+// ─── IMPORT / AI ─────────────────────────────────────────────────────────────
+function saveApiKey() {
+  var key = document.getElementById('apiKeyInput').value.trim();
+  if (!key) return;
+  appState.anthropicKey = key;
+  saveAppState();
+  document.getElementById('apiKeyInput').value = '';
+  document.getElementById('apiKeyStatus').textContent = '\u2713 Key saved \u2014 ready to parse plans.';
+  document.getElementById('apiKeyStatus').style.color = '#27AE60';
+}
+
+var EXAMPLE_TEXTS = {
+  ultra: 'Ultra Marathon Plan\n\nWeek 1\nMon: Rest\nTue: Easy run 45 min\nWed: Strength 45 min\nThu: Easy run 60 min with strides\nFri: Rest\nSat: Long run 12 miles easy\nSun: Recovery jog 30 min',
+  triathlon: 'Sprint Triathlon 8-Week Plan\n\nWeek 1\nMonday: Rest\nTuesday: Swim 2000m easy\nWednesday: Bike 45 min easy Z2\nThursday: Run 30 min easy\nFriday: Rest\nSaturday: Brick Bike 60 min plus Run 20 min\nSunday: Long swim 2500m easy',
+  cycling: '12-Week Road Cycling Base\n\nWeek 1\nMon: Off\nTue: 1hr Zone 2\nWed: 45 min easy\nThu: 1.5hr with 2x10 min sweetspot\nFri: Off\nSat: 3hr long ride Zone 2\nSun: 1hr easy'
+};
+
+function fillExample(key) {
+  var t = EXAMPLE_TEXTS[key];
+  if (t) document.getElementById('importText').value = t;
+}
+
+async function importPlan() {
+  var a = currentAthlete();
+  if (!a) { alert('Please select or create an athlete first.'); return; }
+  var text = document.getElementById('importText').value.trim();
+  if (!text) { alert('Please paste a training plan first.'); return; }
+  var planName = document.getElementById('importPlanName').value.trim() || 'Training Plan';
+  var sport = document.getElementById('importSport').value;
+  var btn = document.getElementById('importBtn');
+  var status = document.getElementById('importStatus');
+  if (!appState.anthropicKey) {
+    status.className = 'import-status error';
+    status.textContent = 'Error: No API key saved. Enter your Anthropic API key above first.';
+    return;
+  }
+  btn.disabled = true;
+  btn.innerHTML = '<span class="ai-spinner"></span>Parsing...';
+  status.className = 'import-status';
+  status.textContent = 'Sending to AI parser\u2026';
+  var systemPrompt = 'You are a training plan parser. Convert the training plan text into structured JSON.\nReturn ONLY valid JSON, no markdown, no backticks.\nShape: {"planName":"string","weeks":[{"phase":0,"label":"Week 1 description","phaseInfo":{"label":"Phase 1","title":"Phase desc","weeks":"Weeks 1-4","pill":"#E6F1FB","pillText":"#0C447C"},"days":[{"name":"Mon","type":"rest","title":"Short title","detail":"Brief detail","workout":null}]}]}\nDay types: rest/off=rest, easy/recovery=endurance, long=long, tempo/sweetspot=tempo, intervals/track/VO2=intervals, strength=strength, test=test, race=race.\nPhase pill colors: Phase1=#E6F1FB/#0C447C Phase2=#EAF3DE/#27500A Phase3=#FAEEDA/#412402.\nAlways 7 days per week. For detailed workouts add workout:{blocks:[{z:warmup|ss|rest|cooldown|vo2,l:label,d:detail,t:duration}],tip:string} else null.\nSport: ' + sport + '. Plan name: ' + planName;
+  try {
+    var resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','x-api-key':appState.anthropicKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body: JSON.stringify({model:'claude-sonnet-4-6',max_tokens:16000,system:systemPrompt,messages:[{role:'user',content:text}]})
+    });
+    var data = await resp.json();
+    if (data.error) throw new Error(data.error.message||'API error');
+    var raw = data.content.map(function(c){return c.text||'';}).join('');
+    var clean = raw.replace(/```json|```/g,'').trim();
+    var fi = clean.indexOf('{'), li = clean.lastIndexOf('}');
+    if (fi !== -1 && li !== -1) clean = clean.slice(fi, li+1);
+    var parsed = JSON.parse(clean);
+    if (!parsed.weeks||!Array.isArray(parsed.weeks)) throw new Error('Invalid structure');
+    pendingImport = {parsed:parsed,sport:sport,planName:planName};
+    status.className = 'import-status success';
+    status.textContent = '\u2713 Parsed ' + parsed.weeks.length + ' weeks successfully.';
+    var preview = '<div style="font-size:13px;color:var(--text-secondary);margin-bottom:12px">' + parsed.weeks.length + ' weeks &middot; ' + sport + ' &middot; ' + planName + '</div>';
+    parsed.weeks.slice(0,3).forEach(function(w){
+      preview += '<div style="margin-bottom:10px"><div class="week-label">' + w.label + '</div><div style="display:flex;gap:6px;flex-wrap:wrap">';
+      w.days.forEach(function(d){ preview += '<span class="zone-pill t-' + d.type + '" style="font-size:11px;padding:3px 8px">' + d.name + ': ' + d.title + '</span>'; });
+      preview += '</div></div>';
+    });
+    if (parsed.weeks.length > 3) preview += '<div style="font-size:12px;color:var(--text-tertiary)">\u2026and ' + (parsed.weeks.length-3) + ' more weeks</div>';
+    document.getElementById('importPreviewContent').innerHTML = preview;
+    document.getElementById('importPreview').style.display = 'block';
+  } catch(e) {
+    status.className = 'import-status error';
+    status.textContent = 'Error: ' + (e.message||'Could not parse plan.');
+  }
+  btn.disabled = false;
+  btn.innerHTML = 'Parse with AI';
+}
+
+function confirmImport() {
+  var a = currentAthlete();
+  if (!a||!pendingImport) return;
+  a.weeks = pendingImport.parsed.weeks;
+  a.planName = pendingImport.parsed.planName||pendingImport.planName;
+  a.sport = pendingImport.parsed.sport||a.sport;
+  a.completed = []; a.activities = []; a.skipped = [];
+  saveAppState();
+  document.getElementById('importPreview').style.display = 'none';
+  renderHeaderForAthlete();
+  buildPlan();
+  updateMetrics();
+  showPage('plan', document.querySelectorAll('.nav-btn')[0]);
+  pendingImport = null;
+}
+
+// ─── NAV ─────────────────────────────────────────────────────────────────────
+function showPage(id, btn) {
+  document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('active'); });
+  document.querySelectorAll('.nav-btn').forEach(function(b){ b.classList.remove('active'); });
+  document.getElementById('page-' + id).classList.add('active');
+  if (btn) btn.classList.add('active');
+  if (id === 'manage') renderManageTab();
+}
+
 </script>
 </body>
 </html>
