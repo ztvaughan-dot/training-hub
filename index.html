@@ -238,6 +238,15 @@
   .manage-fields { display: flex; flex-direction: column; gap: 8px; }
   .manage-field label { font-size: 10px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.04em; display: block; margin-bottom: 3px; }
   .manage-actions { display: flex; gap: 8px; padding-top: 4px; border-top: 0.5px solid var(--border); }
+
+  /* ── CALENDAR DATES ── */
+  .day-date { font-size: 9px; color: var(--text-tertiary); margin-bottom: 1px; }
+  .day-cell.today { border: 2px solid #27AE60 !important; }
+  .day-cell.missed { border: 2px solid #E74C3C !important; }
+  .day-cell.skipped { opacity: 0.5; }
+  .day-cell.skipped .day-type::after { content: ' (skipped)'; font-size: 9px; }
+  .done-check { position: absolute; top: 4px; right: 5px; font-size: 11px; color: #27AE60; font-weight: 700; }
+  .day-cell { position: relative; }
 </style>
 </head>
 <body>
@@ -522,6 +531,11 @@ let pendingImport = null;
 
 function loadAppState() {
   try { const s = localStorage.getItem('training_hub_v2'); if (s) appState = {...appState, ...JSON.parse(s)}; } catch(e) {}
+  // Migrate old athlete records that may be missing newer fields
+  appState.athletes.forEach(a => {
+    if (a.planStartDate === undefined) a.planStartDate = null;
+    if (!a.skipped) a.skipped = [];
+  });
 }
 function saveAppState() {
   try { localStorage.setItem('training_hub_v2', JSON.stringify(appState)); } catch(e) {}
@@ -540,9 +554,11 @@ function defaultAthleteData(sport) {
     ftpHistory: [],
     activities: [],
     completed: [],
+    skipped: [],
     weeks: [],
     planName: '',
     sport: sport || 'cycling',
+    planStartDate: null,
     stravaClientId: null,
     stravaConnected: false,
   };
@@ -650,11 +666,50 @@ function buildPlan() {
     week.days.forEach((day, di) => {
       const key = `w${wi}d${di}`;
       const done = a.completed.includes(key);
-      html += `<div class="day-cell t-${day.type||'rest'}" onclick="openDay(${wi},${di})" id="cell_${key}">
+      const skipped = a.skipped && a.skipped.includes(key);
+
+      // Calculate calendar date for this cell
+      // Maps day name to offset from Monday (0=Mon, 1=Tue, ... 6=Sun)
+      let dateStr = '';
+      let cellClass = '';
+      if (a.planStartDate) {
+        const DAY_OFFSETS = {mon:0,tue:1,wed:2,thu:3,fri:4,sat:5,sun:6};
+        const startDate = new Date(a.planStartDate + 'T12:00:00');
+
+        // Find what day of week the start date is (0=Sun,1=Mon,...6=Sat) -> convert to Mon-based (0=Mon)
+        const startDow = (startDate.getDay() + 6) % 7; // Mon=0, Sun=6
+
+        // Find this day's offset from Monday
+        const dayName = (day.name || 'mon').toLowerCase().slice(0,3);
+        const dayDow = DAY_OFFSETS[dayName] !== undefined ? DAY_OFFSETS[dayName] : di;
+
+        // Week wi starts on the Monday of that week
+        // The Monday of week 0 = startDate minus startDow days
+        const week0Monday = new Date(startDate.getTime() - startDow * 86400000);
+
+        // This cell's date = week0Monday + wi*7 days + dayDow days
+        const cellDate = new Date(week0Monday.getTime() + (wi * 7 + dayDow) * 86400000);
+
+        const today = new Date();
+        today.setHours(12,0,0,0);
+        const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        dateStr = months[cellDate.getMonth()] + ' ' + cellDate.getDate();
+
+        const isPast = cellDate < today;
+        const isToday = cellDate.toDateString() === today.toDateString();
+        const isRest = day.type === 'rest';
+
+        if (isToday) cellClass = 'today';
+        else if (isPast && !done && !skipped && !isRest) cellClass = 'missed';
+        else if (skipped) cellClass = 'skipped';
+      }
+
+      html += `<div class="day-cell t-${day.type||'rest'} ${cellClass}" onclick="openDay(${wi},${di})" id="cell_${key}">
+        ${dateStr ? `<div class="day-date">${dateStr}</div>` : ''}
         <div class="day-name">${day.name||''}</div>
         <div class="day-type">${day.title||''}</div>
         <div class="day-detail">${day.detail||''}</div>
-        ${done ? '<div class="done-dot"></div>' : ''}
+        ${done ? '<div class="done-check">&#10003;</div>' : ''}
       </div>`;
     });
     html += `</div></div>`;
@@ -722,6 +777,7 @@ function openDay(wi, di) {
       <div class="log-field"><label>Avg HR (bpm)</label><input class="log-input" id="log_hr" type="number" placeholder="155" style="margin:0"></div>
     </div>
     <button class="btn primary" onclick="logActivity('${key}','${day.title.replace(/'/g,"\\'")}')">Mark complete + save</button>
+    <button class="btn" onclick="skipWorkout('${key}')" style="margin-top:6px">Skip workout</button>
   </div>`;
 
   document.getElementById('modalContent').innerHTML = html;
@@ -748,6 +804,17 @@ function logActivity(key, title) {
   closeModal();
   buildPlan();
   updateMetrics();
+}
+
+function skipWorkout(key) {
+  const a = currentAthlete();
+  if (!a) return;
+  if (!a.skipped) a.skipped = [];
+  if (!a.skipped.includes(key)) a.skipped.push(key);
+  a.completed = a.completed.filter(k => k !== key);
+  saveAppState();
+  closeModal();
+  buildPlan();
 }
 
 // ─── ZONES ───────────────────────────────────────────────────────────────────
@@ -1058,6 +1125,13 @@ function renderManageTab() {
           </select>
         </div>
         <div class="manage-field">
+          <label>Plan start date</label>
+          <div style="display:flex;gap:6px;align-items:center">
+            <input class="log-input" id="mstart_${a.id}" type="date" value="${a.planStartDate||''}" style="margin:0;flex:1">
+            <button class="btn" onclick="setStartToday('${a.id}')" style="white-space:nowrap;font-size:11px">Set to today</button>
+          </div>
+        </div>
+        <div class="manage-field">
           <label>Avatar color</label>
           <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">
             ${AVATAR_COLORS.map((c,i) => `<div onclick="setAthleteColor('${a.id}',${i},this)" style="width:24px;height:24px;border-radius:50%;background:${c};cursor:pointer;border:2px solid ${i===ci?'var(--text-primary)':'transparent'};transition:transform 0.1s" onmouseover="this.style.transform='scale(1.15)'" onmouseout="this.style.transform='scale(1)'"></div>`).join('')}
@@ -1086,6 +1160,11 @@ function setAthleteColor(id, colorIdx, el) {
   avatar.style.color = AVATAR_TEXT[colorIdx];
 }
 
+function setStartToday(id) {
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('mstart_' + id).value = today;
+}
+
 function saveAthleteEdits(id) {
   const a = appState.athletes.find(x => x.id === id);
   if (!a) return;
@@ -1096,6 +1175,8 @@ function saveAthleteEdits(id) {
   const pendingColor = card.dataset.pendingColor;
   a.name = name;
   a.sport = sport;
+  const startDate = document.getElementById('mstart_' + id).value;
+  a.planStartDate = startDate || null;
   if (pendingColor !== undefined) a.colorIdx = parseInt(pendingColor);
   saveAppState();
   renderAthleteBar();
@@ -1294,7 +1375,7 @@ if (appState.athletes.length === 0) {
   const sonId = 'a_son';
   appState.athletes = [{
     id: sonId, name: 'Son', sport: 'cycling', colorIdx: 1,
-    ftp: 200, ftpHistory: [], activities: [], completed: [],
+    ftp: 200, ftpHistory: [], activities: [], completed: [], skipped: [],
     planName: '12-Week MTB Recovery Plan',
     weeks: MTB_WEEKS,
     stravaClientId: null, stravaConnected: false
