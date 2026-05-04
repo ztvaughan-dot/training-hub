@@ -239,6 +239,22 @@
   .manage-field label { font-size: 10px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.04em; display: block; margin-bottom: 3px; }
   .manage-actions { display: flex; gap: 8px; padding-top: 4px; border-top: 0.5px solid var(--border); }
 
+  /* ── DATE INPUT ICON ── */
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(0.5);
+    cursor: pointer;
+    opacity: 0.7;
+  }
+  input[type="date"]::-webkit-calendar-picker-indicator:hover {
+    opacity: 1;
+  }
+  @media (prefers-color-scheme: dark) {
+    input[type="date"]::-webkit-calendar-picker-indicator {
+      filter: invert(1);
+      opacity: 0.7;
+    }
+  }
+
   /* ── CALENDAR DATES ── */
   .day-date { font-size: 9px; color: var(--text-tertiary); margin-bottom: 1px; }
   .day-cell.today { border: 2px solid #27AE60 !important; }
@@ -246,6 +262,8 @@
   .day-cell.skipped { opacity: 0.5; }
   .day-cell.skipped .day-type::after { content: ' (skipped)'; font-size: 9px; }
   .done-check { position: absolute; top: 4px; right: 5px; font-size: 11px; color: #27AE60; font-weight: 700; }
+  .day-cell.before-start { cursor: default !important; }
+  .day-cell.before-start:hover { opacity: 0.35 !important; transform: none !important; }
   .day-cell { position: relative; }
 </style>
 </head>
@@ -669,25 +687,26 @@ function buildPlan() {
       const skipped = a.skipped && a.skipped.includes(key);
 
       // Calculate calendar date for this cell
-      // Maps day name to offset from Monday (0=Mon, 1=Tue, ... 6=Sun)
+      // Start date is the exact first day of the plan (day 0 = start date regardless of weekday)
+      // Days before the start date in week 1 are shown greyed out as inactive
       let dateStr = '';
       let cellClass = '';
+      let beforeStart = false;
       if (a.planStartDate) {
         const DAY_OFFSETS = {mon:0,tue:1,wed:2,thu:3,fri:4,sat:5,sun:6};
         const startDate = new Date(a.planStartDate + 'T12:00:00');
 
-        // Find what day of week the start date is (0=Sun,1=Mon,...6=Sat) -> convert to Mon-based (0=Mon)
-        const startDow = (startDate.getDay() + 6) % 7; // Mon=0, Sun=6
+        // What day of week (Mon=0) is the start date?
+        const startDow = (startDate.getDay() + 6) % 7;
 
-        // Find this day's offset from Monday
+        // Find this day's Mon-based offset
         const dayName = (day.name || 'mon').toLowerCase().slice(0,3);
         const dayDow = DAY_OFFSETS[dayName] !== undefined ? DAY_OFFSETS[dayName] : di;
 
-        // Week wi starts on the Monday of that week
-        // The Monday of week 0 = startDate minus startDow days
+        // Week 0 Monday = startDate minus startDow days (same anchor as before)
         const week0Monday = new Date(startDate.getTime() - startDow * 86400000);
 
-        // This cell's date = week0Monday + wi*7 days + dayDow days
+        // This cell's actual calendar date
         const cellDate = new Date(week0Monday.getTime() + (wi * 7 + dayDow) * 86400000);
 
         const today = new Date();
@@ -695,21 +714,24 @@ function buildPlan() {
         const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
         dateStr = months[cellDate.getMonth()] + ' ' + cellDate.getDate();
 
+        // Is this cell before the plan start date?
+        beforeStart = cellDate < startDate;
+
         const isPast = cellDate < today;
         const isToday = cellDate.toDateString() === today.toDateString();
         const isRest = day.type === 'rest';
 
-        if (isToday) cellClass = 'today';
+        if (beforeStart) cellClass = 'before-start';
+        else if (isToday) cellClass = 'today';
         else if (isPast && !done && !skipped && !isRest) cellClass = 'missed';
         else if (skipped) cellClass = 'skipped';
       }
 
-      html += `<div class="day-cell t-${day.type||'rest'} ${cellClass}" onclick="openDay(${wi},${di})" id="cell_${key}">
+      html += `<div class="day-cell t-${beforeStart ? 'rest' : (day.type||'rest')} ${cellClass}" onclick="${beforeStart ? '' : `openDay(${wi},${di})`}" id="cell_${key}" style="${beforeStart ? 'opacity:0.35;cursor:default;' : ''}">
         ${dateStr ? `<div class="day-date">${dateStr}</div>` : ''}
         <div class="day-name">${day.name||''}</div>
-        <div class="day-type">${day.title||''}</div>
-        <div class="day-detail">${day.detail||''}</div>
-        ${done ? '<div class="done-check">&#10003;</div>' : ''}
+        ${beforeStart ? '' : `<div class="day-type">${day.title||''}</div><div class="day-detail">${day.detail||''}</div>`}
+        ${done && !beforeStart ? '<div class="done-check">&#10003;</div>' : ''}
       </div>`;
     });
     html += `</div></div>`;
@@ -1127,7 +1149,7 @@ function renderManageTab() {
         <div class="manage-field">
           <label>Plan start date</label>
           <div style="display:flex;gap:6px;align-items:center">
-            <input class="log-input" id="mstart_${a.id}" type="date" value="${a.planStartDate||''}" style="margin:0;flex:1">
+            <input id="mstart_${a.id}" type="date" value="${a.planStartDate||''}" onchange="previewStartDate('${a.id}',this.value)" style="flex:1;padding:8px 10px;border-radius:var(--radius);border:0.5px solid var(--border-md);background:var(--bg-primary);font-size:13px;color:var(--text-primary);font-family:var(--font);">
             <button class="btn" onclick="setStartToday('${a.id}')" style="white-space:nowrap;font-size:11px">Set to today</button>
           </div>
         </div>
@@ -1160,9 +1182,18 @@ function setAthleteColor(id, colorIdx, el) {
   avatar.style.color = AVATAR_TEXT[colorIdx];
 }
 
+function previewStartDate(id, value) {
+  const a = appState.athletes.find(x => x.id === id);
+  if (!a) return;
+  a.planStartDate = value || null;
+  saveAppState();
+  if (appState.currentAthleteId === id) buildPlan();
+}
+
 function setStartToday(id) {
   const today = new Date().toISOString().split('T')[0];
   document.getElementById('mstart_' + id).value = today;
+  previewStartDate(id, today);
 }
 
 function saveAthleteEdits(id) {
@@ -1176,12 +1207,26 @@ function saveAthleteEdits(id) {
   a.name = name;
   a.sport = sport;
   const startDate = document.getElementById('mstart_' + id).value;
-  a.planStartDate = startDate || null;
+  // Ensure date is in YYYY-MM-DD format
+  a.planStartDate = startDate ? startDate : null;
   if (pendingColor !== undefined) a.colorIdx = parseInt(pendingColor);
   saveAppState();
   renderAthleteBar();
   renderManageTab();
-  if (appState.currentAthleteId === id) renderHeaderForAthlete();
+  if (appState.currentAthleteId === id) {
+    renderHeaderForAthlete();
+    buildPlan();
+    updateZones();
+    updateMetrics();
+  }
+  // Show save confirmation on the button
+  const btn = document.querySelector(`#mcard_${id} .btn.primary`);
+  if (btn) {
+    const orig = btn.textContent;
+    btn.textContent = '✓ Saved';
+    btn.style.background = '#27AE60';
+    setTimeout(() => { btn.textContent = orig; btn.style.background = ''; }, 2000);
+  }
 }
 
 function deleteAthlete(id) {
