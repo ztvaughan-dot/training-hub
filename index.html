@@ -229,7 +229,8 @@
   .no-plan p { font-size: 13px; color: var(--text-secondary); max-width: 320px; margin: 0 auto 20px; line-height: 1.7; }
 
   /* ── MANAGE TAB ── */
-  .manage-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+  .manage-grid { display: flex; justify-content: center; }
+  .manage-card { max-width: 480px; width: 100%; }
   .manage-card { background: var(--bg-primary); border-radius: var(--radius-lg); border: 0.5px solid var(--border); padding: 16px; display: flex; flex-direction: column; gap: 12px; }
   .manage-card-header { display: flex; align-items: center; gap: 12px; }
   .manage-avatar-lg { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 600; flex-shrink: 0; }
@@ -1113,11 +1114,12 @@ function confirmImport() {
 function renderManageTab() {
   const grid = document.getElementById('manageGrid');
   if (!grid) return;
-  if (appState.athletes.length === 0) {
-    grid.innerHTML = '<div class="empty">No athletes yet. Use "+ Add athlete" to create one.</div>';
+  const a = currentAthlete();
+  if (!a) {
+    grid.innerHTML = '<div class="empty">No athlete selected. Use "+ Add athlete" to create one.</div>';
     return;
   }
-  grid.innerHTML = appState.athletes.map(a => {
+  grid.innerHTML = [a].map(a => {
     const ci = a.colorIdx || 0;
     const initials = a.name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
     const sportLabels = {running:'Running',cycling:'Cycling / MTB',triathlon:'Triathlon',swimming:'Swimming',other:'Other'};
