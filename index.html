@@ -1,7 +1,7 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
+<!-- saved from url=(0046)file:///C:/Users/ztvau/Downloads/index_14.html -->
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Training Hub</title>
 <style>
@@ -278,10 +278,119 @@
   .edit-block-btn { width: 26px; height: 26px; border-radius: var(--radius); border: 0.5px solid var(--border-md); background: none; cursor: pointer; font-size: 12px; color: var(--text-secondary); display: flex; align-items: center; justify-content: center; }
   .edit-block-btn:hover { background: var(--bg-secondary); color: var(--text-primary); }
   .edit-block-btn.danger:hover { background: #FBEAF0; color: #993556; border-color: #993556; }
+
+  /* ── LOGIN SCREEN ── */
+  .login-screen { display: none; position: fixed; inset: 0; background: var(--bg-tertiary); z-index: 1000; align-items: center; justify-content: center; padding: 20px; }
+  .login-screen.active { display: flex; }
+  .login-card { background: var(--bg-primary); border-radius: var(--radius-lg); border: 0.5px solid var(--border); padding: 32px; max-width: 400px; width: 100%; }
+  .login-logo { font-size: 24px; font-weight: 500; margin-bottom: 6px; }
+  .login-sub { font-size: 13px; color: var(--text-secondary); margin-bottom: 28px; line-height: 1.6; }
+  .login-divider { display: flex; align-items: center; gap: 12px; margin: 16px 0; }
+  .login-divider-line { flex: 1; height: 0.5px; background: var(--border); }
+  .login-divider-text { font-size: 11px; color: var(--text-tertiary); }
+  .login-error { font-size: 12px; color: #993056; background: #FBEAF0; padding: 8px 12px; border-radius: var(--radius); margin-top: 10px; display: none; }
+  .login-error.show { display: block; }
+  .login-toggle { font-size: 12px; color: var(--text-secondary); text-align: center; margin-top: 16px; }
+  .login-toggle a { color: var(--text-primary); cursor: pointer; text-decoration: underline; }
+  .btn-google { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; padding: 10px; border-radius: var(--radius); border: 0.5px solid var(--border-md); background: none; cursor: pointer; font-size: 13px; font-weight: 500; color: var(--text-primary); font-family: var(--font); margin-bottom: 8px; transition: background 0.1s; }
+  .btn-google:hover { background: var(--bg-secondary); }
+  .btn-google svg { width: 18px; height: 18px; flex-shrink: 0; }
 </style>
+
+<!-- Firebase SDK -->
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+  import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+  import { getFirestore, doc, getDoc, setDoc, collection, query, where, getDocs, onSnapshot, updateDoc, deleteDoc, addDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyBwOYcKf7TSa3cp24J4cf_jJn1hLjF61dU",
+    authDomain: "training-hub-95635.firebaseapp.com",
+    projectId: "training-hub-95635",
+    storageBucket: "training-hub-95635.firebasestorage.app",
+    messagingSenderId: "461947886752",
+    appId: "1:461947886752:web:c921e36f4bc7b081087dc5"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+  const googleProvider = new GoogleAuthProvider();
+
+  // Expose to global scope for use in main script
+  window._fb = { auth, db, googleProvider, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, signOut, onAuthStateChanged, doc, getDoc, setDoc, collection, query, where, getDocs, onSnapshot, updateDoc, deleteDoc, addDoc, serverTimestamp };
+
+  // Watch auth state - guard against multiple firings
+  let _authSignedIn = false;
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      window._fbUser = user;
+      const userRef = doc(db, 'users', user.uid);
+      const userSnap = await getDoc(userRef);
+      if (userSnap.exists()) {
+        window._fbProfile = userSnap.data();
+      } else {
+        window._fbProfile = { name: user.displayName || user.email, email: user.email, role: 'athlete' };
+        await setDoc(userRef, { ...window._fbProfile, createdAt: serverTimestamp() });
+      }
+      // Only call onFirebaseSignIn once per session
+      if (!_authSignedIn) {
+        _authSignedIn = true;
+        if (typeof window.onFirebaseSignIn === 'function') window.onFirebaseSignIn(user, window._fbProfile);
+      }
+    } else {
+      _authSignedIn = false;
+      window._fbUser = null;
+      window._fbProfile = null;
+      if (typeof window.onFirebaseSignOut === 'function') window.onFirebaseSignOut();
+    }
+  });
+</script>
 </head>
 <body>
-<div class="container">
+
+<!-- LOGIN SCREEN -->
+<div class="login-screen active" id="loginScreen">
+  <div class="login-card">
+    <div class="login-logo">Training Hub</div>
+    <div class="login-sub">Sign in to access your training plan and track your progress.</div>
+
+    <button class="btn-google" onclick="signInGoogle()">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"></path>
+        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"></path>
+        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"></path>
+        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"></path>
+      </svg>
+      Continue with Google
+    </button>
+
+    <div class="login-divider">
+      <div class="login-divider-line"></div>
+      <div class="login-divider-text">or</div>
+      <div class="login-divider-line"></div>
+    </div>
+
+    <div id="loginForm">
+      <input class="log-input" id="loginEmail" type="email" placeholder="Email address" style="margin-bottom:8px">
+      <input class="log-input" id="loginPassword" type="password" placeholder="Password" style="margin-bottom:8px">
+      <button class="btn primary" style="width:100%;padding:10px" onclick="signInEmail()">Sign in</button>
+      <div class="login-error" id="loginError"></div>
+      <div class="login-toggle">Don't have an account? <a onclick="toggleSignUp()">Create one</a></div>
+    </div>
+
+    <div id="signUpForm" style="display:none">
+      <input class="log-input" id="signUpName" type="text" placeholder="Your name" style="margin-bottom:8px">
+      <input class="log-input" id="signUpEmail" type="email" placeholder="Email address" style="margin-bottom:8px">
+      <input class="log-input" id="signUpPassword" type="password" placeholder="Password (min 6 characters)" style="margin-bottom:8px">
+      <button class="btn primary" style="width:100%;padding:10px" onclick="signUpEmail()">Create account</button>
+      <div class="login-error" id="signUpError"></div>
+      <div class="login-toggle">Already have an account? <a onclick="toggleSignUp()">Sign in</a></div>
+    </div>
+  </div>
+</div>
+
+<div class="container" id="mainApp" style="display:none">
 
   <!-- ATHLETE BAR -->
   <div class="athlete-bar" id="athleteBar">
@@ -290,8 +399,8 @@
 
   <!-- EDIT MODE BANNER -->
   <div class="edit-banner" id="editBanner">
-    <span class="edit-banner-text">&#9998; Edit mode &mdash; drag days to swap, click to edit</span>
-    <button class="btn" onclick="undoEdit()" id="undoBtn" style="font-size:12px">&#8630; Undo</button>
+    <span class="edit-banner-text">✎ Edit mode — drag days to swap, click to edit</span>
+    <button class="btn" onclick="undoEdit()" id="undoBtn" style="font-size:12px">↶ Undo</button>
     <button class="btn primary" onclick="exitEditMode()" style="font-size:12px">Done editing</button>
   </div>
 
@@ -310,12 +419,12 @@
 
   <!-- NAV -->
   <div class="nav">
-    <button class="nav-btn active" onclick="showPage('plan',this)">Plan</button>
-    <button class="nav-btn" onclick="showPage('zones',this)">Zones</button>
-    <button class="nav-btn" onclick="showPage('metrics',this)">Metrics</button>
-    <button class="nav-btn" onclick="showPage('import',this)">Import plan</button>
-    <button class="nav-btn" onclick="showPage('strava',this)">Strava</button>
-    <button class="nav-btn" onclick="showPage('manage',this)">Manage</button>
+    <button class="nav-btn active" onclick="showPage(&#39;plan&#39;,this)">Plan</button>
+    <button class="nav-btn" onclick="showPage(&#39;zones&#39;,this)">Zones</button>
+    <button class="nav-btn" onclick="showPage(&#39;metrics&#39;,this)">Metrics</button>
+    <button class="nav-btn" onclick="showPage(&#39;import&#39;,this)">Import plan</button>
+    <button class="nav-btn" onclick="showPage(&#39;strava&#39;,this)">Strava</button>
+    <button class="nav-btn" onclick="showPage(&#39;manage&#39;,this)">Manage</button>
   </div>
 
   <!-- PLAN -->
@@ -371,11 +480,21 @@
       <p>Paste any training plan — coach emails, text from a website, bullet points, a spreadsheet, or even rough notes. The AI will parse it into a structured weekly calendar for this athlete.</p>
       <div class="example-plans">
         <span style="font-size:11px;color:var(--text-tertiary);align-self:center">Examples:</span>
-        <button class="example-btn" onclick="fillExample('ultra')">Ultra marathon 18-week plan</button>
-        <button class="example-btn" onclick="fillExample('triathlon')">Sprint triathlon 8-week</button>
-        <button class="example-btn" onclick="fillExample('cycling')">Road cycling base block</button>
+        <button class="example-btn" onclick="fillExample(&#39;ultra&#39;)">Ultra marathon 18-week plan</button>
+        <button class="example-btn" onclick="fillExample(&#39;triathlon&#39;)">Sprint triathlon 8-week</button>
+        <button class="example-btn" onclick="fillExample(&#39;cycling&#39;)">Road cycling base block</button>
       </div>
-      <textarea class="import-textarea" id="importText" placeholder="Paste your training plan here...&#10;&#10;Example:&#10;Week 1&#10;Mon — Rest&#10;Tue — Easy run 45 min&#10;Wed — Strength&#10;Thu — Tempo 6 miles @ 7:30/mi&#10;Fri — Rest&#10;Sat — Long run 14 miles&#10;Sun — Recovery jog 30 min"></textarea>
+      <textarea class="import-textarea" id="importText" placeholder="Paste your training plan here...
+
+Example:
+Week 1
+Mon — Rest
+Tue — Easy run 45 min
+Wed — Strength
+Thu — Tempo 6 miles @ 7:30/mi
+Fri — Rest
+Sat — Long run 14 miles
+Sun — Recovery jog 30 min"></textarea>
       <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
         <input class="log-input" id="importPlanName" placeholder="Plan name (e.g. Western States 100 2026)" style="margin:0;flex:1;min-width:180px">
         <select class="log-input" id="importSport" style="margin:0;width:auto">
@@ -394,7 +513,7 @@
       <div id="importPreviewContent"></div>
       <div style="display:flex;gap:8px;margin-top:16px">
         <button class="btn primary" onclick="confirmImport()">Load this plan</button>
-        <button class="btn" onclick="document.getElementById('importPreview').style.display='none'">Cancel</button>
+        <button class="btn" onclick="document.getElementById(&#39;importPreview&#39;).style.display=&#39;none&#39;">Cancel</button>
       </div>
     </div>
   </div>
@@ -412,7 +531,7 @@
       </ol>
       <div style="display:flex;gap:8px;margin-bottom:10px">
         <input class="log-input" id="clientIdInput" placeholder="Strava Client ID (numbers only)" style="margin:0;flex:1">
-        <button class="btn primary" onclick="saveClientId()">Save & connect</button>
+        <button class="btn primary" onclick="saveClientId()">Save &amp; connect</button>
       </div>
       <p style="font-size:12px;margin:0">Stored locally in your browser only — never sent anywhere except Strava's OAuth endpoint.</p>
     </div>
@@ -433,35 +552,6 @@
   <div class="modal" id="modalContent"></div>
 </div>
 
-<!-- NEW ATHLETE MODAL -->
-<div class="modal-overlay" id="athleteModalOverlay" onclick="closeAthleteModalOutside(event)">
-  <div class="modal" id="athleteModalContent">
-    <div class="modal-header">
-      <div><div class="modal-title">Add athlete</div><div class="modal-sub">Each athlete gets their own plans, zones, and activity log</div></div>
-      <button class="modal-close" onclick="closeAthleteModal()">✕</button>
-    </div>
-    <div style="margin-bottom:12px">
-      <div class="log-field" style="margin-bottom:10px"><label>Name</label><input class="log-input" id="newAthleteName" placeholder="e.g. Alex" style="margin:0"></div>
-      <div class="log-field" style="margin-bottom:6px"><label>Sport / Focus</label>
-        <select class="log-input" id="newAthleteSport" style="margin:0">
-          <option value="running">Running</option>
-          <option value="cycling">Cycling / MTB</option>
-          <option value="triathlon">Triathlon</option>
-          <option value="swimming">Swimming</option>
-          <option value="other">Other</option>
-        </select>
-      </div>
-      <div class="log-field"><label>Avatar color</label>
-        <div class="color-swatches" id="colorSwatches"></div>
-      </div>
-    </div>
-    <div style="display:flex;gap:8px">
-      <button class="btn primary" onclick="createAthlete()">Create athlete</button>
-      <button class="btn" onclick="closeAthleteModal()">Cancel</button>
-    </div>
-  </div>
-</div>
-
 <!-- EDIT DAY DIALOG -->
 <div class="edit-dialog-overlay" id="editDayOverlay">
   <div class="edit-dialog" id="editDayDialog"></div>
@@ -472,7 +562,7 @@
   <div class="modal" id="athleteModalContent">
     <div class="modal-header">
       <div><div class="modal-title">Add athlete</div><div class="modal-sub">Each athlete gets their own plans, zones, and activity log</div></div>
-      <button class="modal-close" onclick="closeAthleteModal()">&#x2715;</button>
+      <button class="modal-close" onclick="closeAthleteModal()">✕</button>
     </div>
     <div style="margin-bottom:12px">
       <div class="log-field" style="margin-bottom:10px"><label>Name</label><input class="log-input" id="newAthleteName" placeholder="e.g. Alex" style="margin:0"></div>
@@ -542,6 +632,9 @@ function loadAppState() {
 }
 function saveAppState() {
   try { localStorage.setItem('training_hub_v2', JSON.stringify(appState)); } catch(e) {}
+  // Also save current athlete to Firestore if logged in
+  const a = currentAthlete();
+  if (a && window._fbUser) saveAthleteToFirestore(a);
 }
 
 function currentAthlete() {
@@ -619,16 +712,24 @@ function selectColor(i, el) {
   document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
   el.classList.add('selected');
 }
-function createAthlete() {
+async function createAthlete() {
   const name = document.getElementById('newAthleteName').value.trim();
   if (!name) { alert('Please enter a name.'); return; }
   const sport = document.getElementById('newAthleteSport').value;
   const id = 'a_' + Date.now();
-  const athlete = { id, name, sport, colorIdx: selectedColor, ...defaultAthleteData(sport) };
-  appState.athletes.push(athlete);
-  saveAppState();
+  let athlete = { id, name, sport, colorIdx: selectedColor, ...defaultAthleteData(sport) };
   closeAthleteModal();
-  selectAthlete(id);
+  if (window._fbUser) {
+    // Don't push to appState - onSnapshot listener will handle it
+    athlete = await createAthleteInFirestore(athlete);
+    // Just set current athlete ID - the snapshot will populate the rest
+    appState.currentAthleteId = athlete.id;
+  } else {
+    appState.athletes.push(athlete);
+    saveAppState();
+    renderAthleteBar();
+    selectAthlete(athlete.id);
+  }
 }
 
 // ─── PLAN BUILD ──────────────────────────────────────────────────────────────
@@ -730,15 +831,18 @@ function openDay(wi, di) {
   if (logs.length > 0) {
     html += `<div style="margin-top:14px">`;
     logs.forEach(act => {
+      const ratingLabels = {great:'Felt great',harder:'Harder than expected',easier:'Easier than expected',cut_short:'Cut short'};
       html += `<div class="logged-entry">
         <div class="logged-head"><span class="logged-name">${act.name}</span><span class="logged-date">${act.date}</span></div>
         <div class="logged-metrics">
           ${act.dur ? `Duration <span>${act.dur} min</span>` : ''}
-          ${act.pwr && !sportIsRunning ? `&nbsp;· Avg power <span>${act.pwr}w</span>` : ''}
-          ${act.pwr && sportIsRunning ? `&nbsp;· Avg pace <span>${act.pwr}/mi</span>` : ''}
-          ${act.hr ? `&nbsp;· Avg HR <span>${act.hr} bpm</span>` : ''}
-          ${act.tss ? `&nbsp;· TSS <span>${act.tss}</span>` : ''}
+          ${act.pwr && !sportIsRunning ? `&nbsp;&middot; Avg power <span>${act.pwr}w</span>` : ''}
+          ${act.pwr && sportIsRunning ? `&nbsp;&middot; Avg pace <span>${act.pwr}/mi</span>` : ''}
+          ${act.hr ? `&nbsp;&middot; Avg HR <span>${act.hr} bpm</span>` : ''}
+          ${act.tss ? `&nbsp;&middot; TSS <span>${act.tss}</span>` : ''}
         </div>
+        ${act.rating ? `<div style="font-size:11px;color:var(--text-secondary);margin-top:4px">&#128200; ${ratingLabels[act.rating]||act.rating}</div>` : ''}
+        ${act.journal ? `<div style="font-size:12px;color:var(--text-secondary);margin-top:4px;font-style:italic">&ldquo;${act.journal}&rdquo;</div>` : ''}
       </div>`;
     });
     html += `</div>`;
@@ -754,7 +858,20 @@ function openDay(wi, di) {
       <div class="log-field"><label>${pwrLabel}</label><input class="log-input" id="log_pwr" type="text" placeholder="${pwrPlaceholder}" style="margin:0"></div>
       <div class="log-field"><label>Avg HR (bpm)</label><input class="log-input" id="log_hr" type="number" placeholder="155" style="margin:0"></div>
     </div>
-    <button class="btn primary" onclick="logActivity('${key}','${day.title.replace(/'/g,"\\'")}')">Mark complete + save</button>
+    <div class="log-field" style="margin:10px 0">
+      <label>How did it go?</label>
+      <div style="display:flex;flex-direction:column;gap:6px;margin-top:6px">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="radio" name="log_rating" value="great"> Felt great &mdash; as prescribed</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="radio" name="log_rating" value="harder"> Harder than expected</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="radio" name="log_rating" value="easier"> Easier than expected</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="radio" name="log_rating" value="cut_short"> Had to cut it short</label>
+      </div>
+    </div>
+    <div class="log-field" style="margin-bottom:10px">
+      <label>Journal</label>
+      <textarea class="log-input" id="log_journal" rows="3" placeholder="Notes for yourself or your coach..." style="margin:0;resize:vertical"></textarea>
+    </div>
+    <button class="btn primary" onclick="logActivity('${key}','${day.title.replace(/'/g,"\'")}')">Mark complete + save</button>
     <button class="btn" onclick="skipWorkout('${key}')" style="margin-top:6px">Skip workout</button>
   </div>`;
 
@@ -772,11 +889,15 @@ function logActivity(key, title) {
   const dur = document.getElementById('log_dur').value;
   const pwr = document.getElementById('log_pwr').value;
   const hr = document.getElementById('log_hr').value;
+  const journalEl = document.getElementById('log_journal');
+  const journal = journalEl ? journalEl.value : '';
+  const ratingEl = document.querySelector('input[name="log_rating"]:checked');
+  const rating = ratingEl ? ratingEl.value : null;
   const durN = parseFloat(dur);
   const pwrN = parseFloat(pwr);
   const tss = (durN && pwrN && !isNaN(pwrN) && a.sport !== 'running') ?
     Math.round((durN * pwrN * pwrN) / (a.ftp * a.ftp * 3.6)) : null;
-  a.activities.push({ key, name, date: new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'}), dur: dur||null, pwr: pwr||null, hr: hr||null, tss });
+  a.activities.push({ key, name, date: new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'}), dur: dur||null, pwr: pwr||null, hr: hr||null, tss, rating: rating||null, journal: journal||null });
   if (!a.completed.includes(key)) a.completed.push(key);
   saveAppState();
   closeModal();
@@ -823,11 +944,27 @@ function updateZones() {
 }
 
 function skipWorkout(key) {
+  document.getElementById('modalContent').innerHTML = '<div class="modal-header">'
+    + '<div><div class="modal-title">Skip workout</div><div class="modal-sub">Let your coach know why (optional)</div></div>'
+    + '<button class="modal-close" onclick="closeModal()">&#x2715;</button></div>'
+    + '<div class="log-field" style="margin-bottom:16px"><label>Reason</label>'
+    + '<textarea class="log-input" id="skip_reason" rows="3" placeholder="Illness, injury, life got in the way..." style="margin:0;resize:vertical"></textarea></div>'
+    + '<div style="display:flex;gap:8px">'
+    + '<button class="btn primary" data-key="' + key + '" onclick="confirmSkip(this.dataset.key)">Confirm skip</button>'
+    + '<button class="btn" onclick="closeModal()">Cancel</button></div>';
+}
+
+function confirmSkip(key) {
   const a = currentAthlete();
   if (!a) return;
+  const reasonEl = document.getElementById('skip_reason');
+  const reason = reasonEl ? reasonEl.value : '';
   if (!a.skipped) a.skipped = [];
   if (!a.skipped.includes(key)) a.skipped.push(key);
   a.completed = a.completed.filter(k => k !== key);
+  if (reason) {
+    a.activities.push({ key, name: 'Skipped', date: new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'}), skipped: true, journal: reason });
+  }
   saveAppState();
   closeModal();
   buildPlan();
@@ -1061,24 +1198,36 @@ const MTB_WEEKS = [
 // ─── INIT ────────────────────────────────────────────────────────────────────
 loadAppState();
 
-// Seed existing MTB plan if no athletes yet
-if (appState.athletes.length === 0) {
-  appState.athletes = [{
-    id: 'a_son', name: 'Son', sport: 'cycling', colorIdx: 1,
-    ftp: 200, ftpHistory: [], activities: [], completed: [], skipped: [],
-    planStartDate: null, planName: '12-Week MTB Recovery Plan',
-    weeks: MTB_WEEKS, stravaClientId: null, stravaConnected: false
-  }];
-  appState.currentAthleteId = 'a_son';
-  saveAppState();
-}
+// Show login screen by default - Firebase auth will hide it when signed in
+showLoginScreen();
 
-renderAthleteBar();
-selectAthlete(appState.currentAthleteId || (appState.athletes[0] && appState.athletes[0].id));
+// If Firebase isn't available (offline/dev), fall back to localStorage
+setTimeout(function() {
+  if (!window._fbUser && !window._fb) {
+    // Fallback - run without Firebase
+    hideLoginScreen();
+    if (appState.athletes.length === 0) {
+      appState.athletes = [{
+        id: 'a_son', name: 'Son', sport: 'cycling', colorIdx: 1,
+        ftp: 200, ftpHistory: [], activities: [], completed: [], skipped: [],
+        planStartDate: null, planName: '12-Week MTB Recovery Plan',
+        weeks: MTB_WEEKS, stravaClientId: null, stravaConnected: false
+      }];
+      appState.currentAthleteId = 'a_son';
+      saveAppState();
+    }
+    renderAthleteBar();
+    selectAthlete(appState.currentAthleteId || (appState.athletes[0] && appState.athletes[0].id));
+  }
+}, 3000);
+
 if (appState.anthropicKey) {
   var ks = document.getElementById('apiKeyStatus');
   if (ks) { ks.textContent = '\u2713 API key already saved.'; ks.style.color = '#27AE60'; }
 }
+
+// After sign in, migrate localStorage data to Firestore
+window.addEventListener('firebaseReady', migrateLocalStorageToFirestore);
 
 // ─── ATHLETE BAR ─────────────────────────────────────────────────────────────
 function renderAthleteBar() {
@@ -1407,16 +1556,25 @@ function deleteAthlete(id) {
   var a = appState.athletes.find(function(x){ return x.id === id; });
   if (!a) return;
   if (!confirm('Delete "' + a.name + '" and all their data? This cannot be undone.')) return;
-  appState.athletes = appState.athletes.filter(function(x){ return x.id !== id; });
-  if (appState.currentAthleteId === id) appState.currentAthleteId = appState.athletes.length > 0 ? appState.athletes[0].id : null;
-  saveAppState();
-  renderAthleteBar();
-  renderManageTab();
-  if (appState.currentAthleteId) selectAthlete(appState.currentAthleteId);
-  else {
-    document.getElementById('headerName').textContent = 'Training Hub';
-    document.getElementById('headerSub').textContent = 'Select or create an athlete to get started';
-    document.getElementById('page-plan').innerHTML = '<div class="no-plan"><div class="no-plan-icon">&#128100;</div><h2>No athletes yet</h2><p>Create an athlete profile to get started.</p><button class="btn primary" onclick="openNewAthleteModal()">Add athlete</button></div>';
+  if (window._fbUser) {
+    // Let onSnapshot handle local state update after Firestore delete
+    if (appState.currentAthleteId === id) {
+      const remaining = appState.athletes.filter(function(x){ return x.id !== id; });
+      appState.currentAthleteId = remaining.length > 0 ? remaining[0].id : null;
+    }
+    deleteAthleteFromFirestore(id);
+  } else {
+    appState.athletes = appState.athletes.filter(function(x){ return x.id !== id; });
+    if (appState.currentAthleteId === id) appState.currentAthleteId = appState.athletes.length > 0 ? appState.athletes[0].id : null;
+    saveAppState();
+    renderAthleteBar();
+    renderManageTab();
+    if (appState.currentAthleteId) selectAthlete(appState.currentAthleteId);
+    else {
+      document.getElementById('headerName').textContent = 'Training Hub';
+      document.getElementById('headerSub').textContent = 'Select or create an athlete to get started';
+      document.getElementById('page-plan').innerHTML = '<div class="no-plan"><div class="no-plan-icon">&#128100;</div><h2>No athletes yet</h2><p>Create an athlete profile to get started.</p><button class="btn primary" onclick="openNewAthleteModal()">Add athlete</button></div>';
+    }
   }
 }
 
@@ -1520,6 +1678,230 @@ function showPage(id, btn) {
   if (id === 'manage') renderManageTab();
 }
 
+
+// ─── AUTH ─────────────────────────────────────────────────────────────────────
+let _listenerSetUp = false;
+let _unsubscribeAthletes = null;
+function showLoginScreen() {
+  document.getElementById('loginScreen').classList.add('active');
+  document.getElementById('mainApp').style.display = 'none';
+}
+function hideLoginScreen() {
+  document.getElementById('loginScreen').classList.remove('active');
+  document.getElementById('mainApp').style.display = '';
+}
+function toggleSignUp() {
+  const login = document.getElementById('loginForm');
+  const signup = document.getElementById('signUpForm');
+  login.style.display = login.style.display === 'none' ? '' : 'none';
+  signup.style.display = signup.style.display === 'none' ? '' : 'none';
+}
+function showAuthError(id, msg) {
+  const el = document.getElementById(id);
+  el.textContent = msg;
+  el.classList.add('show');
+}
+function clearAuthError(id) {
+  const el = document.getElementById(id);
+  el.classList.remove('show');
+}
+
+async function signInGoogle() {
+  if (!window._fb) return;
+  try {
+    await window._fb.signInWithPopup(window._fb.auth, window._fb.googleProvider);
+  } catch(e) {
+    showAuthError('loginError', e.message);
+  }
+}
+
+async function signInEmail() {
+  if (!window._fb) return;
+  clearAuthError('loginError');
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  if (!email || !password) { showAuthError('loginError', 'Please enter email and password.'); return; }
+  try {
+    await window._fb.signInWithEmailAndPassword(window._fb.auth, email, password);
+  } catch(e) {
+    showAuthError('loginError', 'Invalid email or password.');
+  }
+}
+
+async function signUpEmail() {
+  if (!window._fb) return;
+  clearAuthError('signUpError');
+  const name = document.getElementById('signUpName').value.trim();
+  const email = document.getElementById('signUpEmail').value.trim();
+  const password = document.getElementById('signUpPassword').value;
+  if (!name || !email || !password) { showAuthError('signUpError', 'Please fill in all fields.'); return; }
+  if (password.length < 6) { showAuthError('signUpError', 'Password must be at least 6 characters.'); return; }
+  try {
+    const cred = await window._fb.createUserWithEmailAndPassword(window._fb.auth, email, password);
+    // Update display name
+    const userRef = window._fb.doc(window._fb.db, 'users', cred.user.uid);
+    await window._fb.setDoc(userRef, { name, email, role: 'athlete', createdAt: window._fb.serverTimestamp() });
+  } catch(e) {
+    showAuthError('signUpError', e.message);
+  }
+}
+
+async function signOutUser() {
+  if (!window._fb) return;
+  _listenerSetUp = false;
+  if (typeof _unsubscribeAthletes === 'function') { _unsubscribeAthletes(); _unsubscribeAthletes = null; }
+  await window._fb.signOut(window._fb.auth);
+  appState = { athletes: [], currentAthleteId: null, anthropicKey: appState.anthropicKey || '' };
+  showLoginScreen();
+}
+
+// ─── FIREBASE CALLBACKS ───────────────────────────────────────────────────────
+window.onFirebaseSignIn = async function(user, profile) {
+  hideLoginScreen();
+  // Add sign out button to header
+  const stravaBar = document.querySelector('.strava-bar');
+  if (stravaBar && !document.getElementById('signOutBtn')) {
+    const btn = document.createElement('button');
+    btn.id = 'signOutBtn';
+    btn.className = 'btn';
+    btn.textContent = 'Sign out';
+    btn.onclick = signOutUser;
+    btn.style.fontSize = '11px';
+    stravaBar.prepend(btn);
+  }
+
+  // Only set up Firestore listeners once per session
+  if (_listenerSetUp) return;
+  _listenerSetUp = true;
+
+  if (profile.role === 'coach') {
+    await loadCoachAthletes(user.uid);
+  } else {
+    await loadAthleteProfile(user.uid);
+  }
+};
+
+window.onFirebaseSignOut = function() {
+  showLoginScreen();
+};
+
+// ─── FIRESTORE — COACH ───────────────────────────────────────────────────────
+async function loadCoachAthletes(coachId) {
+  const { db, collection, query, where, onSnapshot } = window._fb;
+  // Unsubscribe any existing listener
+  if (_unsubscribeAthletes) { _unsubscribeAthletes(); _unsubscribeAthletes = null; }
+  const q = query(collection(db, 'athletes'), where('coachId', '==', coachId));
+  _unsubscribeAthletes = onSnapshot(q, (snapshot) => {
+    appState.athletes = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    // If current athlete was deleted or doesn't exist, pick first available
+    const currentExists = appState.athletes.find(function(a){ return a.id === appState.currentAthleteId; });
+    if (!currentExists) {
+      appState.currentAthleteId = appState.athletes.length > 0 ? appState.athletes[0].id : null;
+    }
+    renderAthleteBar();
+    if (appState.currentAthleteId) {
+      selectAthlete(appState.currentAthleteId);
+    } else {
+      document.getElementById('headerName').textContent = 'Training Hub';
+      document.getElementById('headerSub').textContent = 'Create your first athlete to get started';
+      buildPlan();
+    }
+  });
+}
+
+async function loadAthleteProfile(userId) {
+  const { db, collection, query, where, onSnapshot } = window._fb;
+  const q = query(collection(db, 'athletes'), where('athleteUserId', '==', userId));
+  onSnapshot(q, (snapshot) => {
+    if (snapshot.empty) {
+      document.getElementById('headerName').textContent = 'Welcome';
+      document.getElementById('headerSub').textContent = 'Your coach has not set up your plan yet.';
+      buildPlan();
+      return;
+    }
+    const athleteDoc = snapshot.docs[0];
+    appState.athletes = [{ id: athleteDoc.id, ...athleteDoc.data() }];
+    appState.currentAthleteId = athleteDoc.id;
+    // Hide coach-only tabs for athletes
+    hideCoachTabs();
+    renderAthleteBar();
+    selectAthlete(athleteDoc.id);
+  });
+}
+
+function hideCoachTabs() {
+  const navBtns = document.querySelectorAll('.nav-btn');
+  navBtns.forEach(btn => {
+    const text = btn.textContent.trim();
+    if (text === 'Import plan' || text === 'Manage') btn.style.display = 'none';
+  });
+}
+
+// ─── FIRESTORE — SAVE ────────────────────────────────────────────────────────
+async function saveAthleteToFirestore(athlete) {
+  if (!window._fb || !window._fbUser) { saveAppState(); return; }
+  const { db, doc, setDoc } = window._fb;
+  try {
+    const ref = doc(db, 'athletes', athlete.id);
+    await setDoc(ref, athlete, { merge: true });
+  } catch(e) {
+    console.error('Firestore save error:', e);
+    saveAppState(); // fallback to localStorage
+  }
+}
+
+async function deleteAthleteFromFirestore(id) {
+  if (!window._fb || !window._fbUser) return;
+  const { db, doc, deleteDoc } = window._fb;
+  try {
+    await deleteDoc(doc(db, 'athletes', id));
+  } catch(e) {
+    console.error('Firestore delete error:', e);
+  }
+}
+
+// ─── FIRESTORE — CREATE ATHLETE ──────────────────────────────────────────────
+async function createAthleteInFirestore(athlete) {
+  if (!window._fb || !window._fbUser) { appState.athletes.push(athlete); saveAppState(); return athlete; }
+  const { db, collection, addDoc, serverTimestamp } = window._fb;
+  try {
+    const ref = await addDoc(collection(db, 'athletes'), {
+      ...athlete,
+      coachId: window._fbUser.uid,
+      createdAt: serverTimestamp()
+    });
+    athlete.id = ref.id;
+    return athlete;
+  } catch(e) {
+    console.error('Firestore create error:', e);
+    appState.athletes.push(athlete);
+    saveAppState();
+    return athlete;
+  }
+}
+
+// ─── MIGRATE LOCALSTORAGE → FIRESTORE ────────────────────────────────────────
+async function migrateLocalStorageToFirestore() {
+  if (!window._fb || !window._fbUser) return;
+  const local = localStorage.getItem('training_hub_v2');
+  if (!local) return;
+  const migrated = localStorage.getItem('training_hub_migrated');
+  if (migrated) return;
+  try {
+    const data = JSON.parse(local);
+    if (data.athletes && data.athletes.length > 0) {
+      for (const a of data.athletes) {
+        await createAthleteInFirestore({ ...a, coachId: window._fbUser.uid });
+      }
+      localStorage.setItem('training_hub_migrated', 'true');
+      console.log('Migration complete');
+    }
+  } catch(e) {
+    console.error('Migration error:', e);
+  }
+}
+
 </script>
-</body>
-</html>
+
+
+</body></html>
