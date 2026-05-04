@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0046)file:///C:/Users/ztvau/Downloads/index_21.html -->
+<!-- saved from url=(0056)file:///C:/Users/ztvau/Downloads/training-hub-fixed.html -->
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -253,9 +253,6 @@
   .manage-fields { display: flex; flex-direction: column; gap: 8px; }
   .manage-field label { font-size: 10px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.04em; display: block; margin-bottom: 3px; }
   .manage-actions { display: flex; gap: 8px; padding-top: 4px; border-top: 0.5px solid var(--border); }
-  .color-swatches { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0 14px; }
-  .color-swatch { width: 28px; height: 28px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: transform 0.1s; }
-  .color-swatch:hover, .color-swatch.selected { transform: scale(1.15); border-color: var(--text-primary); }
 
   /* ── EDIT MODE ── */
   .edit-banner { background: #FAEEDA; border-radius: var(--radius-lg); border: 0.5px solid #FAC775; padding: 10px 16px; margin-bottom: 12px; display: none; align-items: center; gap: 10px; flex-wrap: wrap; }
@@ -317,10 +314,8 @@
   const db = getFirestore(app);
   const googleProvider = new GoogleAuthProvider();
 
-  // Expose to global scope for use in main script
   window._fb = { auth, db, googleProvider, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, signOut, onAuthStateChanged, doc, getDoc, setDoc, collection, query, where, getDocs, onSnapshot, updateDoc, deleteDoc, addDoc, serverTimestamp };
 
-  // Watch auth state - guard against multiple firings
   let _authSignedIn = false;
   onAuthStateChanged(auth, async (user) => {
     if (user) {
@@ -333,7 +328,6 @@
         window._fbProfile = { name: user.displayName || user.email, email: user.email, role: 'athlete' };
         await setDoc(userRef, { ...window._fbProfile, createdAt: serverTimestamp() });
       }
-      // Only call onFirebaseSignIn once per session
       console.log('onAuthStateChanged fired, _authSignedIn=', _authSignedIn);
       if (!_authSignedIn) {
         _authSignedIn = true;
@@ -614,7 +608,6 @@ const ZONE_DEFS_RUNNING = [
   {name:'Z5 — VO2max',pct:'93–100% max HR',bg:'#EEEDFE',tc:'#26215C'},
 ];
 
-
 // ─── STATE ───────────────────────────────────────────────────────────────────
 let editMode = false;
 let editHistory = [];
@@ -626,19 +619,30 @@ let pendingImport = null;
 let appState = { athletes: [], currentAthleteId: null, anthropicKey: '' };
 
 function loadAppState() {
-  try { const s = localStorage.getItem('training_hub_v2'); if (s) appState = {...appState, ...JSON.parse(s)}; } catch(e) {}
+  try {
+    const s = localStorage.getItem('training_hub_v2');
+    if (s) {
+      const parsed = JSON.parse(s);
+      // Only restore the API key from localStorage; athletes come from Firestore
+      if (parsed.anthropicKey) appState.anthropicKey = parsed.anthropicKey;
+    }
+  } catch(e) {}
   appState.athletes.forEach(a => {
     if (a.planStartDate === undefined) a.planStartDate = null;
     if (!a.skipped) a.skipped = [];
   });
 }
 function saveAppState() {
-  try { localStorage.setItem('training_hub_v2', JSON.stringify(appState)); } catch(e) {}
-  // Firestore saves are explicit only - not automatic
+  // Persist only the API key locally; athlete data lives in Firestore
+  try {
+    localStorage.setItem('training_hub_v2', JSON.stringify({
+      anthropicKey: appState.anthropicKey || ''
+    }));
+  } catch(e) {}
 }
 
 function saveCurrentAthleteToFirestore() {
-  var a = currentAthlete();
+  const a = currentAthlete();
   if (a && window._fbUser) saveAthleteToFirestore(a);
 }
 
@@ -666,16 +670,13 @@ function defaultAthleteData(sport) {
 }
 
 // ─── ATHLETE MANAGEMENT ──────────────────────────────────────────────────────
-
 function selectAthlete(id) {
   appState.currentAthleteId = id;
-  saveAppState();
-  saveCurrentAthleteToFirestore();
   renderAthleteBar();
-if (appState.anthropicKey) {
-  const ks = document.getElementById('apiKeyStatus');
-  if (ks) { ks.textContent = '✓ API key already saved.'; ks.style.color = '#27500A'; }
-}
+  if (appState.anthropicKey) {
+    const ks = document.getElementById('apiKeyStatus');
+    if (ks) { ks.textContent = '✓ API key already saved.'; ks.style.color = '#27500A'; }
+  }
   renderHeaderForAthlete();
   buildPlan();
   updateZones();
@@ -683,10 +684,14 @@ if (appState.anthropicKey) {
   renderFTPHistory();
   const a = currentAthlete();
   if (a) {
-    document.getElementById('ftpInput').value = a.ftp;
-    if (a.stravaClientId) document.getElementById('clientIdInput').value = a.stravaClientId;
+    const ftpInput = document.getElementById('ftpInput');
+    if (ftpInput) ftpInput.value = a.ftp;
+    const cidInput = document.getElementById('clientIdInput');
+    if (cidInput && a.stravaClientId) cidInput.value = a.stravaClientId;
     updateStravaUI();
   }
+  // NOTE: Do NOT save back to Firestore here. selectAthlete is a read-only UI
+  // operation; saving on selection caused write loops and resurrected stale ids.
 }
 
 function renderHeaderForAthlete() {
@@ -718,33 +723,38 @@ function selectColor(i, el) {
   document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
   el.classList.add('selected');
 }
-let _creatingAthlete = false;
 
+let _creatingAthlete = false;
 async function createAthlete() {
-  console.log('createAthlete called, _creatingAthlete=', _creatingAthlete);
-  if (_creatingAthlete) return; // prevent double-fire
+  if (_creatingAthlete) return;
   _creatingAthlete = true;
-  const name = document.getElementById('newAthleteName').value.trim();
-  if (!name) { _creatingAthlete = false; alert('Please enter a name.'); return; }
-  const sport = document.getElementById('newAthleteSport').value;
-  const id = 'a_' + Date.now();
-  let athlete = { id, name, sport, colorIdx: selectedColor, ...defaultAthleteData(sport) };
-  closeAthleteModal();
   try {
+    const name = document.getElementById('newAthleteName').value.trim();
+    if (!name) { alert('Please enter a name.'); return; }
+    const sport = document.getElementById('newAthleteSport').value;
+    // No local id — Firestore generates the id when we addDoc
+    const athlete = { name, sport, colorIdx: selectedColor, ...defaultAthleteData(sport) };
+    closeAthleteModal();
+
     if (window._fbUser) {
-      athlete = await createAthleteInFirestore(athlete);
-      // Refresh athletes from Firestore to get clean state
+      const created = await createAthleteInFirestore(athlete);
+      if (!created || !created.id) {
+        alert('Could not create athlete in Firestore. Check the console for details.');
+        return;
+      }
+      // Refresh from Firestore so the local list is the source of truth
       await refreshAthletes();
-      appState.currentAthleteId = athlete.id;
-      selectAthlete(athlete.id);
+      appState.currentAthleteId = created.id;
+      selectAthlete(created.id);
     } else {
+      // Offline fallback — assign a local id since there's no Firestore to do it
+      athlete.id = 'a_' + Date.now();
       appState.athletes.push(athlete);
-      saveAppState();
       renderAthleteBar();
       selectAthlete(athlete.id);
     }
   } finally {
-    setTimeout(function(){ _creatingAthlete = false; }, 2000);
+    _creatingAthlete = false;
   }
 }
 
@@ -887,7 +897,7 @@ function openDay(wi, di) {
       <label>Journal</label>
       <textarea class="log-input" id="log_journal" rows="3" placeholder="Notes for yourself or your coach..." style="margin:0;resize:vertical"></textarea>
     </div>
-    <button class="btn primary" onclick="logActivity('${key}','${day.title.replace(/'/g,"\'")}')">Mark complete + save</button>
+    <button class="btn primary" onclick="logActivity('${key}','${day.title.replace(/'/g,"\\'")}')">Mark complete + save</button>
     <button class="btn" onclick="skipWorkout('${key}')" style="margin-top:6px">Skip workout</button>
   </div>`;
 
@@ -915,7 +925,6 @@ function logActivity(key, title) {
     Math.round((durN * pwrN * pwrN) / (a.ftp * a.ftp * 3.6)) : null;
   a.activities.push({ key, name, date: new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'}), dur: dur||null, pwr: pwr||null, hr: hr||null, tss, rating: rating||null, journal: journal||null });
   if (!a.completed.includes(key)) a.completed.push(key);
-  saveAppState();
   saveCurrentAthleteToFirestore();
   closeModal();
   buildPlan();
@@ -982,7 +991,7 @@ function confirmSkip(key) {
   if (reason) {
     a.activities.push({ key, name: 'Skipped', date: new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'}), skipped: true, journal: reason });
   }
-  saveAppState();
+  saveCurrentAthleteToFirestore();
   closeModal();
   buildPlan();
 }
@@ -994,7 +1003,6 @@ function saveFTP() {
   a.ftp = ftp;
   const label = a.sport === 'running' ? 'Max HR / pace' : 'FTP';
   a.ftpHistory.push({ ftp, label, date: new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) });
-  saveAppState();
   saveCurrentAthleteToFirestore();
   updateZones();
   renderFTPHistory();
@@ -1052,11 +1060,6 @@ function updateMetrics() {
     </div>`).join('');
 }
 
-// ─── IMPORT / AI ─────────────────────────────────────────────────────────────
-
-
-
-
 // ─── STRAVA ──────────────────────────────────────────────────────────────────
 function saveClientId() {
   const a = currentAthlete();
@@ -1064,7 +1067,7 @@ function saveClientId() {
   const id = document.getElementById('clientIdInput').value.trim();
   if (!id) return;
   a.stravaClientId = id;
-  saveAppState();
+  saveCurrentAthleteToFirestore();
   alert('Client ID saved. Strava OAuth will be wired in a future update.');
 }
 function stravaAction() { showPage('strava', document.querySelectorAll('.nav-btn')[4]); }
@@ -1075,176 +1078,6 @@ function updateStravaUI() {
   document.getElementById('stravaText').textContent = connected ? 'Strava connected' : 'Strava not connected';
   document.getElementById('stravaBtn').textContent = connected ? 'Connected' : 'Connect Strava';
 }
-
-// ─── NAV ─────────────────────────────────────────────────────────────────────
-
-// ─── SEED: import existing MTB plan for the son ──────────────────────────────
-const MTB_WEEKS = [
-  {phase:0,label:'Week 1 — First rides post-surgery',phaseInfo:{label:'Phase 1',title:'Recovery & base building',weeks:'Weeks 1–4',pill:'#E6F1FB',pillText:'#0C447C'},days:[
-    {type:'rest',name:'Mon',title:'Rest',detail:'Full rest, elevate arm'},
-    {type:'endurance',name:'Tue',title:'Easy spin',detail:'30 min Z1–Z2'},
-    {type:'rest',name:'Wed',title:'Rest',detail:'Arm recovery'},
-    {type:'endurance',name:'Thu',title:'Easy spin',detail:'35 min Z1–Z2'},
-    {type:'strength',name:'Fri',title:'Core / legs',detail:'Squats, planks (no arm load)'},
-    {type:'endurance',name:'Sat',title:'Longer spin',detail:'45 min Z2'},
-    {type:'rest',name:'Sun',title:'Rest',detail:'Full rest'},
-  ]},
-  {phase:0,label:'Week 2 — Consistency over intensity',phaseInfo:{label:'Phase 1',title:'Recovery & base building',weeks:'Weeks 1–4',pill:'#E6F1FB',pillText:'#0C447C'},days:[
-    {type:'recovery',name:'Mon',title:'Recovery',detail:'20 min easy spin'},
-    {type:'endurance',name:'Tue',title:'Endurance',detail:'45 min Z2, 85–95 rpm'},
-    {type:'strength',name:'Wed',title:'Core',detail:'Hip bridges, dead bugs'},
-    {type:'endurance',name:'Thu',title:'Endurance',detail:'45 min Z2 + 5×30s spin-ups'},
-    {type:'rest',name:'Fri',title:'Rest',detail:'Arm PT focus'},
-    {type:'endurance',name:'Sat',title:'Long ride',detail:'60 min Z2'},
-    {type:'recovery',name:'Sun',title:'Easy',detail:'30 min Z1 openers'},
-  ]},
-  {phase:0,label:'Week 3 — FTP test',phaseInfo:{label:'Phase 1',title:'Recovery & base building',weeks:'Weeks 1–4',pill:'#E6F1FB',pillText:'#0C447C'},days:[
-    {type:'recovery',name:'Mon',title:'Recovery',detail:'25 min easy'},
-    {type:'test',name:'Tue',title:'FTP test',detail:'Zwift 20-min test',workout:{blocks:[
-      {z:'warmup',l:'Warmup',d:'10 min easy → 5 min Z3 → 5 min easy settle.',t:'20 min'},
-      {z:'vo2',l:'20-min test',d:'Ride as hard as you can sustain for 20 min. Record average power. FTP = avg × 0.95',t:'20 min'},
-      {z:'cooldown',l:'Cooldown',d:'10 min easy. Enter result in Zones tab.',t:'10 min'}
-    ],tip:'Sets all training zones. Start slightly conservative for better data.'
-    }},
-    {type:'rest',name:'Wed',title:'Rest',detail:''},
-    {type:'endurance',name:'Thu',title:'Endurance',detail:'50 min Z2 with new zones'},
-    {type:'strength',name:'Fri',title:'Core / legs',detail:'Bulgarian split squats'},
-    {type:'endurance',name:'Sat',title:'Long ride',detail:'70 min Z2'},
-    {type:'recovery',name:'Sun',title:'Easy',detail:'30 min easy spin'},
-  ]},
-  {phase:0,label:'Week 4 — Recovery week',phaseInfo:{label:'Phase 1',title:'Recovery & base building',weeks:'Weeks 1–4',pill:'#E6F1FB',pillText:'#0C447C'},days:[
-    {type:'rest',name:'Mon',title:'Rest',detail:''},
-    {type:'endurance',name:'Tue',title:'Easy',detail:'40 min Z1–Z2'},
-    {type:'strength',name:'Wed',title:'Core',detail:'Light session, mobility'},
-    {type:'endurance',name:'Thu',title:'Easy',detail:'40 min Z2'},
-    {type:'rest',name:'Fri',title:'Rest',detail:''},
-    {type:'endurance',name:'Sat',title:'Moderate',detail:'55 min Z2'},
-    {type:'rest',name:'Sun',title:'Rest',detail:''},
-  ]},
-  {phase:1,label:'Week 5 — Sweetspot introduction',phaseInfo:{label:'Phase 2',title:'Build — structured intervals',weeks:'Weeks 5–8',pill:'#EAF3DE',pillText:'#27500A'},days:[
-    {type:'rest',name:'Mon',title:'Rest',detail:''},
-    {type:'tempo',name:'Tue',title:'Sweetspot',detail:'2×10 min @ 88–93% FTP',workout:{blocks:[
-      {z:'warmup',l:'Warmup',d:'5 min easy → 5 min progressive build → 3×15s bursts → 2 min settle',t:'15 min'},
-      {z:'ss',l:'Interval 1',d:'88–93% FTP, cadence 85–92 rpm.',t:'10 min'},
-      {z:'rest',l:'Recovery',d:'Easy Z1 spin.',t:'5 min'},
-      {z:'ss',l:'Interval 2',d:'88–93% FTP. Hold power, not perceived effort.',t:'10 min'},
-      {z:'cooldown',l:'Cooldown',d:'Easy Z1 spin.',t:'10 min'},
-    ],tip:'First sweetspot session. ERG mode OFF. Total work: 20 min.'}},
-    {type:'strength',name:'Wed',title:'Core + legs',detail:'Goblet squats, lunges'},
-    {type:'endurance',name:'Thu',title:'Endurance',detail:'60 min Z2, cadence drills'},
-    {type:'recovery',name:'Fri',title:'Recovery',detail:'30 min easy spin'},
-    {type:'tempo',name:'Sat',title:'Sweetspot',detail:'3×10 min @ 88–93% FTP',workout:{blocks:[
-      {z:'warmup',l:'Warmup',d:'Standard 15-min warmup',t:'15 min'},
-      {z:'ss',l:'Interval 1',d:'88–93% FTP',t:'10 min'},
-      {z:'rest',l:'Recovery',d:'Z1 easy spin',t:'4 min'},
-      {z:'ss',l:'Interval 2',d:'88–93% FTP',t:'10 min'},
-      {z:'rest',l:'Recovery',d:'Z1 easy spin',t:'4 min'},
-      {z:'ss',l:'Interval 3',d:'88–93% FTP. If power drops below 85% FTP, cut it short.',t:'10 min'},
-      {z:'cooldown',l:'Cooldown',d:'Easy spin.',t:'10 min'},
-    ],tip:'Three intervals. Total work: 30 min.'}},
-    {type:'endurance',name:'Sun',title:'Long ride',detail:'75 min Z2'},
-  ]},
-  {phase:1,label:'Week 6 — VO2 reactivation',phaseInfo:{label:'Phase 2',title:'Build — structured intervals',weeks:'Weeks 5–8',pill:'#EAF3DE',pillText:'#27500A'},days:[
-    {type:'rest',name:'Mon',title:'Rest',detail:''},
-    {type:'intervals',name:'Tue',title:'VO2 intervals',detail:'5×3 min @ 110–115% FTP',workout:{blocks:[
-      {z:'warmup',l:'Warmup',d:'Standard 15-min warmup',t:'15 min'},
-      {z:'vo2',l:'5 intervals',d:'3 min @ 110–115% FTP, 3 min easy Z1 between each.',t:'3 min ea'},
-      {z:'cooldown',l:'Cooldown',d:'10 min easy spin.',t:'10 min'},
-    ],tip:'VO2 reactivation. ERG mode OFF. Total interval work: 15 min.'}},
-    {type:'strength',name:'Wed',title:'Core',detail:'Single leg drills + gym'},
-    {type:'tempo',name:'Thu',title:'Sweetspot',detail:'3×10 min @ 88–93% FTP'},
-    {type:'recovery',name:'Fri',title:'Recovery',detail:'30 min very easy'},
-    {type:'intervals',name:'Sat',title:'MTB sim',detail:'6×1 min all-out, 2 min easy'},
-    {type:'endurance',name:'Sun',title:'Long ride',detail:'80 min Z2, hilly'},
-  ]},
-  {phase:1,label:'Week 7 — Volume peak',phaseInfo:{label:'Phase 2',title:'Build — structured intervals',weeks:'Weeks 5–8',pill:'#EAF3DE',pillText:'#27500A'},days:[
-    {type:'recovery',name:'Mon',title:'Recovery',detail:'30 min easy + stretching'},
-    {type:'intervals',name:'Tue',title:'VO2 intervals',detail:'6×3 min @ 110% FTP'},
-    {type:'endurance',name:'Wed',title:'Endurance',detail:'60 min Z2'},
-    {type:'tempo',name:'Thu',title:'Sweetspot',detail:'3×12 min @ 90% FTP'},
-    {type:'strength',name:'Fri',title:'Gym',detail:'Add upper body if cleared'},
-    {type:'intervals',name:'Sat',title:'Punchy ride',detail:'60 min + 8×45s surges'},
-    {type:'endurance',name:'Sun',title:'Long ride',detail:'90 min Z2'},
-  ]},
-  {phase:1,label:'Week 8 — Recovery + FTP retest',phaseInfo:{label:'Phase 2',title:'Build — structured intervals',weeks:'Weeks 5–8',pill:'#EAF3DE',pillText:'#27500A'},days:[
-    {type:'rest',name:'Mon',title:'Rest',detail:''},
-    {type:'recovery',name:'Tue',title:'Easy',detail:'40 min Z1–Z2'},
-    {type:'rest',name:'Wed',title:'Rest',detail:''},
-    {type:'test',name:'Thu',title:'FTP retest',detail:'Zwift 20-min test'},
-    {type:'rest',name:'Fri',title:'Rest',detail:''},
-    {type:'endurance',name:'Sat',title:'Endurance',detail:'60 min easy Z2'},
-    {type:'rest',name:'Sun',title:'Rest',detail:''},
-  ]},
-  {phase:2,label:'Week 9 — Race-style power',phaseInfo:{label:'Phase 3',title:'Race prep — MTB specificity',weeks:'Weeks 9–12',pill:'#FAEEDA',pillText:'#412402'},days:[
-    {type:'rest',name:'Mon',title:'Rest',detail:''},
-    {type:'intervals',name:'Tue',title:'Race efforts',detail:'8×1 min MAX, 2 min easy'},
-    {type:'endurance',name:'Wed',title:'Endurance',detail:'60 min Z2'},
-    {type:'tempo',name:'Thu',title:'Threshold',detail:'2×15 min @ 95–100% FTP'},
-    {type:'strength',name:'Fri',title:'Gym',detail:'Full body race-prep'},
-    {type:'intervals',name:'Sat',title:'MTB sim',detail:'Alpe du Zwift + surges'},
-    {type:'endurance',name:'Sun',title:'Long ride',detail:'90–100 min Z2'},
-  ]},
-  {phase:2,label:'Week 10 — High load',phaseInfo:{label:'Phase 3',title:'Race prep — MTB specificity',weeks:'Weeks 9–12',pill:'#FAEEDA',pillText:'#412402'},days:[
-    {type:'recovery',name:'Mon',title:'Recovery',detail:'30 min easy spin'},
-    {type:'intervals',name:'Tue',title:'VO2 max',detail:'4×4 min @ 115% FTP'},
-    {type:'endurance',name:'Wed',title:'Endurance',detail:'60 min Z2 + 4×20s sprints'},
-    {type:'tempo',name:'Thu',title:'Sweetspot',detail:'3×15 min @ 90% FTP'},
-    {type:'recovery',name:'Fri',title:'Recovery',detail:'30 min easy'},
-    {type:'intervals',name:'Sat',title:'Zwift race',detail:'Zwift race or group ride'},
-    {type:'endurance',name:'Sun',title:'Long ride',detail:'100 min Z2'},
-  ]},
-  {phase:2,label:'Week 11 — First outdoor rides',phaseInfo:{label:'Phase 3',title:'Race prep — MTB specificity',weeks:'Weeks 9–12',pill:'#FAEEDA',pillText:'#412402'},days:[
-    {type:'rest',name:'Mon',title:'Rest',detail:''},
-    {type:'intervals',name:'Tue',title:'Intervals',detail:'6×2 min @ 110% FTP'},
-    {type:'endurance',name:'Wed',title:'Outdoor ride',detail:'60 min easy trail or road'},
-    {type:'tempo',name:'Thu',title:'Threshold',detail:'2×15 min @ FTP'},
-    {type:'recovery',name:'Fri',title:'Recovery',detail:'Easy spin'},
-    {type:'race',name:'Sat',title:'MTB ride',detail:'Trail ride, moderate effort'},
-    {type:'endurance',name:'Sun',title:'Long ride',detail:'90 min Z2'},
-  ]},
-  {phase:2,label:'Week 12 — Season opener',phaseInfo:{label:'Phase 3',title:'Race prep — MTB specificity',weeks:'Weeks 9–12',pill:'#FAEEDA',pillText:'#412402'},days:[
-    {type:'rest',name:'Mon',title:'Rest',detail:''},
-    {type:'intervals',name:'Tue',title:'VO2 intervals',detail:'5×3 min @ 110% FTP'},
-    {type:'endurance',name:'Wed',title:'Endurance',detail:'60 min Z2, hilly route'},
-    {type:'tempo',name:'Thu',title:'Sweetspot',detail:'3×12 min @ 90% FTP'},
-    {type:'recovery',name:'Fri',title:'Recovery',detail:'30 min easy, leg openers'},
-    {type:'race',name:'Sat',title:'MTB ride',detail:'Trail ride, moderate-hard'},
-    {type:'endurance',name:'Sun',title:'Long ride',detail:'90 min Z2 — Zwift or outdoor'},
-  ]},
-];
-
-// ─── INIT ────────────────────────────────────────────────────────────────────
-loadAppState();
-
-// Show login screen by default - Firebase auth will hide it when signed in
-showLoginScreen();
-
-// If Firebase isn't available (offline/dev), fall back to localStorage
-setTimeout(function() {
-  if (!window._fbUser && !window._fb) {
-    // Fallback - run without Firebase
-    hideLoginScreen();
-    if (appState.athletes.length === 0) {
-      appState.athletes = [{
-        id: 'a_son', name: 'Son', sport: 'cycling', colorIdx: 1,
-        ftp: 200, ftpHistory: [], activities: [], completed: [], skipped: [],
-        planStartDate: null, planName: '12-Week MTB Recovery Plan',
-        weeks: MTB_WEEKS, stravaClientId: null, stravaConnected: false
-      }];
-      appState.currentAthleteId = 'a_son';
-      saveAppState();
-    }
-    renderAthleteBar();
-    selectAthlete(appState.currentAthleteId || (appState.athletes[0] && appState.athletes[0].id));
-  }
-}, 3000);
-
-if (appState.anthropicKey) {
-  var ks = document.getElementById('apiKeyStatus');
-  if (ks) { ks.textContent = '\u2713 API key already saved.'; ks.style.color = '#27AE60'; }
-}
-
-// Migration disabled - athletes created fresh through UI
 
 // ─── ATHLETE BAR ─────────────────────────────────────────────────────────────
 function renderAthleteBar() {
@@ -1261,7 +1094,7 @@ function renderAthleteBar() {
   bar.innerHTML = html;
 }
 
-// ─── EDIT MODE ────────────────────────────────────────────────────────────────
+// ─── EDIT MODE ───────────────────────────────────────────────────────────────
 function enterEditMode(id) {
   selectAthlete(id);
   editMode = true;
@@ -1293,13 +1126,13 @@ function undoEdit() {
   const a = currentAthlete();
   if (!a) return;
   a.weeks = editHistory.pop();
-  saveAppState();
+  saveCurrentAthleteToFirestore();
   updateUndoBtn();
   buildPlan();
 }
 function deepClone(obj) { return JSON.parse(JSON.stringify(obj)); }
 
-// ─── DRAG AND DROP ────────────────────────────────────────────────────────────
+// ─── DRAG AND DROP ───────────────────────────────────────────────────────────
 function onDragStart(e, key) {
   dragSourceKey = key;
   e.dataTransfer.effectAllowed = 'move';
@@ -1338,7 +1171,7 @@ function onDrop(e, targetKey) {
   var srcClone = deepClone(srcDay), tgtClone = deepClone(tgtDay);
   a.weeks[swi].days[sdi] = Object.assign(tgtClone, {name: srcName});
   a.weeks[twi].days[tdi] = Object.assign(srcClone, {name: tgtName});
-  saveAppState();
+  saveCurrentAthleteToFirestore();
   dragSourceKey = null;
   buildPlan();
 }
@@ -1351,12 +1184,6 @@ function onDragEnd() {
 var BLOCK_ZONES = ['warmup','ss','rest','cooldown','vo2','long'];
 var BLOCK_LABELS = {warmup:'Warmup',ss:'Sweetspot',rest:'Recovery',cooldown:'Cooldown',vo2:'VO2max',long:'Long'};
 var DAY_TYPES = ['rest','recovery','endurance','long','tempo','intervals','strength','test','race'];
-
-function buildZoneOptions(selected) {
-  return BLOCK_ZONES.map(function(z) {
-    return '<option value="' + z + '"' + (z === selected ? ' selected' : '') + '>' + (BLOCK_LABELS[z]||z) + '</option>';
-  }).join('');
-}
 
 function buildBlockRow(b, bi) {
   var zOpts = BLOCK_ZONES.map(function(z) {
@@ -1467,7 +1294,7 @@ function saveEditDay(wi, di) {
   } else if (day.type === 'rest') {
     day.workout = null;
   }
-  saveAppState();
+  saveCurrentAthleteToFirestore();
   closeEditDay();
   buildPlan();
 }
@@ -1544,8 +1371,9 @@ function previewStartDate(id, value) {
   var a = appState.athletes.find(function(x){ return x.id === id; });
   if (!a) return;
   a.planStartDate = value || null;
-  saveAppState();
   if (appState.currentAthleteId === id) buildPlan();
+  // Persist on date change
+  if (window._fbUser) saveAthleteToFirestore(a);
 }
 
 function saveAthleteEdits(id) {
@@ -1561,7 +1389,7 @@ function saveAthleteEdits(id) {
   a.sport = sport;
   a.planStartDate = startDate || null;
   if (pendingColor !== undefined) a.colorIdx = parseInt(pendingColor);
-  saveAppState();
+  if (window._fbUser) saveAthleteToFirestore(a);
   renderAthleteBar();
   renderManageTab();
   if (appState.currentAthleteId === id) { renderHeaderForAthlete(); buildPlan(); updateZones(); updateMetrics(); }
@@ -1573,14 +1401,31 @@ async function deleteAthlete(id) {
   var a = appState.athletes.find(function(x){ return x.id === id; });
   if (!a) return;
   if (!confirm('Delete "' + a.name + '" and all their data? This cannot be undone.')) return;
+
   if (window._fbUser) {
-    await deleteAthleteFromFirestore(id);
-    // Refresh from Firestore after delete
+    // Delete in Firestore first, then refresh local state from the source of truth
+    const ok = await deleteAthleteFromFirestore(id);
+    if (!ok) {
+      alert('Failed to delete from Firestore. Check the console for details.');
+      return;
+    }
     await refreshAthletes();
+    if (!appState.athletes.find(x => x.id === appState.currentAthleteId)) {
+      appState.currentAthleteId = appState.athletes.length > 0 ? appState.athletes[0].id : null;
+    }
+    renderAthleteBar();
+    renderManageTab();
+    if (appState.currentAthleteId) {
+      selectAthlete(appState.currentAthleteId);
+    } else {
+      document.getElementById('headerName').textContent = 'Training Hub';
+      document.getElementById('headerSub').textContent = 'Select or create an athlete to get started';
+      document.getElementById('page-plan').innerHTML = '<div class="no-plan"><div class="no-plan-icon">&#128100;</div><h2>No athletes yet</h2><p>Create an athlete profile to get started.</p><button class="btn primary" onclick="openNewAthleteModal()">Add athlete</button></div>';
+    }
   } else {
+    // Offline fallback
     appState.athletes = appState.athletes.filter(function(x){ return x.id !== id; });
     if (appState.currentAthleteId === id) appState.currentAthleteId = appState.athletes.length > 0 ? appState.athletes[0].id : null;
-    saveAppState();
     renderAthleteBar();
     renderManageTab();
     if (appState.currentAthleteId) selectAthlete(appState.currentAthleteId);
@@ -1637,7 +1482,7 @@ async function importPlan() {
     var resp = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {'Content-Type':'application/json','x-api-key':appState.anthropicKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body: JSON.stringify({model:'claude-sonnet-4-6',max_tokens:16000,system:systemPrompt,messages:[{role:'user',content:text}]})
+      body: JSON.stringify({model:'claude-sonnet-4-5',max_tokens:16000,system:systemPrompt,messages:[{role:'user',content:text}]})
     });
     var data = await resp.json();
     if (data.error) throw new Error(data.error.message||'API error');
@@ -1674,7 +1519,7 @@ function confirmImport() {
   a.planName = pendingImport.parsed.planName||pendingImport.planName;
   a.sport = pendingImport.parsed.sport||a.sport;
   a.completed = []; a.activities = []; a.skipped = [];
-  saveAppState();
+  saveCurrentAthleteToFirestore();
   document.getElementById('importPreview').style.display = 'none';
   renderHeaderForAthlete();
   buildPlan();
@@ -1692,8 +1537,7 @@ function showPage(id, btn) {
   if (id === 'manage') renderManageTab();
 }
 
-
-// ─── AUTH ─────────────────────────────────────────────────────────────────────
+// ─── AUTH ────────────────────────────────────────────────────────────────────
 let _listenerSetUp = false;
 let _unsubscribeAthletes = null;
 function showLoginScreen() {
@@ -1752,7 +1596,6 @@ async function signUpEmail() {
   if (password.length < 6) { showAuthError('signUpError', 'Password must be at least 6 characters.'); return; }
   try {
     const cred = await window._fb.createUserWithEmailAndPassword(window._fb.auth, email, password);
-    // Update display name
     const userRef = window._fb.doc(window._fb.db, 'users', cred.user.uid);
     await window._fb.setDoc(userRef, { name, email, role: 'athlete', createdAt: window._fb.serverTimestamp() });
   } catch(e) {
@@ -1769,10 +1612,9 @@ async function signOutUser() {
   showLoginScreen();
 }
 
-// ─── FIREBASE CALLBACKS ───────────────────────────────────────────────────────
+// ─── FIREBASE CALLBACKS ──────────────────────────────────────────────────────
 window.onFirebaseSignIn = async function(user, profile) {
   hideLoginScreen();
-  // Add sign out button to header
   const stravaBar = document.querySelector('.strava-bar');
   if (stravaBar && !document.getElementById('signOutBtn')) {
     const btn = document.createElement('button');
@@ -1784,7 +1626,6 @@ window.onFirebaseSignIn = async function(user, profile) {
     stravaBar.prepend(btn);
   }
 
-  // Only set up Firestore listeners once per session
   if (_listenerSetUp) return;
   _listenerSetUp = true;
 
@@ -1799,17 +1640,35 @@ window.onFirebaseSignOut = function() {
   showLoginScreen();
 };
 
-// ─── FIRESTORE — COACH ───────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+// FIRESTORE HELPERS — these contain the bug fixes
+// ═══════════════════════════════════════════════════════════════════════════
+
+// FIX: Read order matters. The Firestore document ID (d.id) MUST win over
+// any stale `id` field that may exist inside the document body. Spreading
+// data first then assigning id last makes d.id authoritative.
+function athleteFromDoc(d) {
+  const data = d.data();
+  delete data.id; // belt-and-suspenders: drop any stale id field in the body
+  return Object.assign(data, { id: d.id });
+}
+
 async function loadCoachAthletes(coachId) {
   const { db, collection, query, where, getDocs } = window._fb;
   try {
     const q = query(collection(db, 'athletes'), where('coachId', '==', coachId));
     const snapshot = await getDocs(q);
     console.log('loadCoachAthletes: found', snapshot.size, 'athletes in Firestore');
-    appState.athletes = snapshot.docs.map(function(d) { return Object.assign({id: d.id}, d.data()); });
+    appState.athletes = snapshot.docs.map(athleteFromDoc);
+
+    // Reset currentAthleteId if it points to something that no longer exists
+    if (appState.currentAthleteId && !appState.athletes.find(a => a.id === appState.currentAthleteId)) {
+      appState.currentAthleteId = null;
+    }
     if (!appState.currentAthleteId && appState.athletes.length > 0) {
       appState.currentAthleteId = appState.athletes[0].id;
     }
+
     renderAthleteBar();
     if (appState.currentAthleteId) {
       selectAthlete(appState.currentAthleteId);
@@ -1825,26 +1684,33 @@ async function loadCoachAthletes(coachId) {
 
 async function refreshAthletes() {
   if (!window._fbUser || !window._fbProfile) return;
-  await loadCoachAthletes(window._fbUser.uid);
+  // Re-pull straight from Firestore. Don't re-render here — caller decides.
+  const { db, collection, query, where, getDocs } = window._fb;
+  try {
+    const q = query(collection(db, 'athletes'), where('coachId', '==', window._fbUser.uid));
+    const snapshot = await getDocs(q);
+    appState.athletes = snapshot.docs.map(athleteFromDoc);
+  } catch(e) {
+    console.error('refreshAthletes error:', e);
+  }
 }
 
 async function loadAthleteProfile(userId) {
   const { db, collection, query, where, onSnapshot } = window._fb;
   const q = query(collection(db, 'athletes'), where('athleteUserId', '==', userId));
-  onSnapshot(q, (snapshot) => {
+  _unsubscribeAthletes = onSnapshot(q, (snapshot) => {
     if (snapshot.empty) {
       document.getElementById('headerName').textContent = 'Welcome';
       document.getElementById('headerSub').textContent = 'Your coach has not set up your plan yet.';
       buildPlan();
       return;
     }
-    const athleteDoc = snapshot.docs[0];
-    appState.athletes = [{ id: athleteDoc.id, ...athleteDoc.data() }];
-    appState.currentAthleteId = athleteDoc.id;
-    // Hide coach-only tabs for athletes
+    // FIX: same id-precedence fix — use athleteFromDoc helper
+    appState.athletes = [athleteFromDoc(snapshot.docs[0])];
+    appState.currentAthleteId = appState.athletes[0].id;
     hideCoachTabs();
     renderAthleteBar();
-    selectAthlete(athleteDoc.id);
+    selectAthlete(appState.currentAthleteId);
   });
 }
 
@@ -1856,37 +1722,52 @@ function hideCoachTabs() {
   });
 }
 
-// ─── FIRESTORE — SAVE ────────────────────────────────────────────────────────
+// FIX: Strip the local `id` field from the data we write. The doc PATH is
+// the id; storing it inside the body too creates the bug where it leaks
+// back on read and ends up clobbering the real Firestore id.
 async function saveAthleteToFirestore(athlete) {
-  if (!window._fb || !window._fbUser) { saveAppState(); return; }
+  if (!window._fb || !window._fbUser) return;
+  if (!athlete || !athlete.id) {
+    console.warn('saveAthleteToFirestore called without a valid id; skipping');
+    return;
+  }
   const { db, doc, setDoc } = window._fb;
   try {
-    const ref = doc(db, 'athletes', athlete.id);
-    await setDoc(ref, athlete, { merge: true });
+    const { id, ...dataToSave } = athlete;
+    const ref = doc(db, 'athletes', id);
+    await setDoc(ref, dataToSave, { merge: true });
   } catch(e) {
     console.error('Firestore save error:', e);
-    saveAppState(); // fallback to localStorage
   }
 }
 
 async function deleteAthleteFromFirestore(id) {
-  if (!window._fb || !window._fbUser) return;
+  if (!window._fb || !window._fbUser) return false;
+  if (!id) { console.warn('deleteAthleteFromFirestore called without id'); return false; }
   const { db, doc, deleteDoc } = window._fb;
   try {
     await deleteDoc(doc(db, 'athletes', id));
+    return true;
   } catch(e) {
     console.error('Firestore delete error:', e);
+    return false;
   }
 }
 
-// ─── FIRESTORE — CREATE ATHLETE ──────────────────────────────────────────────
+// FIX: Strip any local `id` before addDoc. Firestore generates the real id.
+// Then assign that real id back onto the local object.
 async function createAthleteInFirestore(athlete) {
-  if (!window._fb || !window._fbUser) { appState.athletes.push(athlete); saveAppState(); return athlete; }
+  if (!window._fb || !window._fbUser) {
+    if (!athlete.id) athlete.id = 'a_' + Date.now();
+    appState.athletes.push(athlete);
+    return athlete;
+  }
   const { db, collection, addDoc, serverTimestamp } = window._fb;
   console.log('createAthleteInFirestore called for:', athlete.name);
   try {
+    const { id: _localId, ...dataToSave } = athlete;
     const ref = await addDoc(collection(db, 'athletes'), {
-      ...athlete,
+      ...dataToSave,
       coachId: window._fbUser.uid,
       createdAt: serverTimestamp()
     });
@@ -1895,17 +1776,28 @@ async function createAthleteInFirestore(athlete) {
     return athlete;
   } catch(e) {
     console.error('Firestore create error:', e);
-    return athlete;
+    return null;
   }
 }
 
-// ─── MIGRATE LOCALSTORAGE → FIRESTORE ────────────────────────────────────────
-async function migrateLocalStorageToFirestore() {
-  // Migration disabled - athletes are created fresh through the UI
-  // Mark as migrated so this never runs
-  localStorage.setItem('training_hub_migrated', 'true');
-}
+// ─── INIT ────────────────────────────────────────────────────────────────────
+loadAppState();
+showLoginScreen();
 
+// Offline fallback — if Firebase never loads, run locally after 3s
+setTimeout(function() {
+  if (!window._fbUser && !window._fb) {
+    hideLoginScreen();
+    renderAthleteBar();
+    if (appState.currentAthleteId) selectAthlete(appState.currentAthleteId);
+    else buildPlan();
+  }
+}, 3000);
+
+if (appState.anthropicKey) {
+  var ks = document.getElementById('apiKeyStatus');
+  if (ks) { ks.textContent = '\u2713 API key already saved.'; ks.style.color = '#27AE60'; }
+}
 </script>
 
 
