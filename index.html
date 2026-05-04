@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0046)file:///C:/Users/ztvau/Downloads/index_16.html -->
+<!-- saved from url=(0046)file:///C:/Users/ztvau/Downloads/index_17.html -->
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -632,8 +632,11 @@ function loadAppState() {
 }
 function saveAppState() {
   try { localStorage.setItem('training_hub_v2', JSON.stringify(appState)); } catch(e) {}
-  // Also save current athlete to Firestore if logged in
-  const a = currentAthlete();
+  // Firestore saves are explicit only - not automatic
+}
+
+function saveCurrentAthleteToFirestore() {
+  var a = currentAthlete();
   if (a && window._fbUser) saveAthleteToFirestore(a);
 }
 
@@ -665,6 +668,7 @@ function defaultAthleteData(sport) {
 function selectAthlete(id) {
   appState.currentAthleteId = id;
   saveAppState();
+  saveCurrentAthleteToFirestore();
   renderAthleteBar();
 if (appState.anthropicKey) {
   const ks = document.getElementById('apiKeyStatus');
@@ -906,6 +910,7 @@ function logActivity(key, title) {
   a.activities.push({ key, name, date: new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'}), dur: dur||null, pwr: pwr||null, hr: hr||null, tss, rating: rating||null, journal: journal||null });
   if (!a.completed.includes(key)) a.completed.push(key);
   saveAppState();
+  saveCurrentAthleteToFirestore();
   closeModal();
   buildPlan();
   updateMetrics();
@@ -984,6 +989,7 @@ function saveFTP() {
   const label = a.sport === 'running' ? 'Max HR / pace' : 'FTP';
   a.ftpHistory.push({ ftp, label, date: new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) });
   saveAppState();
+  saveCurrentAthleteToFirestore();
   updateZones();
   renderFTPHistory();
 }
