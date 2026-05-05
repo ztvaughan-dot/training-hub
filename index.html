@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0046)file:///C:/Users/ztvau/Downloads/index_22.html -->
+<!-- saved from url=(0046)file:///C:/Users/ztvau/Downloads/index_23.html -->
 <html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -1564,8 +1564,10 @@ function renderManageTab() {
   var ci = a.colorIdx || 0;
   var initials = a.name.split(' ').map(function(w){return w[0];}).join('').toUpperCase().slice(0,2);
   var sportLabels = {running:'Running',cycling:'Cycling / MTB',triathlon:'Triathlon',swimming:'Swimming',other:'Other'};
-  var workouts = a.weeks ? a.weeks.reduce(function(s,w){return s+w.days.filter(function(d){return d.type!=='rest';}).length;},0) : 0;
-  var done = a.completed ? a.completed.length : 0;
+  var allWk = getAllWeeks(a);
+  var workouts = allWk.reduce(function(s,e){return s+e.week.days.filter(function(d){return d.type!=='rest';}).length;},0);
+  var currentPln = getCurrentPlan(a);
+  var currentPlanStartDate = currentPln ? (currentPln.startDate || '') : '';
   var colorSwatches = AVATAR_COLORS.map(function(c,i){
     return '<div data-id="' + a.id + '" data-ci="' + i + '" onclick="setAthleteColorEl(this)" style="width:24px;height:24px;border-radius:50%;background:' + c + ';cursor:pointer;border:2px solid ' + (i===ci?'var(--text-primary)':'transparent') + ';transition:transform 0.1s" onmouseover="this.style.transform=\'scale(1.15)\'" onmouseout="this.style.transform=\'scale(1)\'"></div>';
   }).join('');
@@ -1951,11 +1953,13 @@ async function saveAthleteToFirestore(athlete) {
   if (!window._fb || !window._fbUser) { saveAppState(); return; }
   const { db, doc, setDoc } = window._fb;
   try {
-    const ref = doc(db, 'athletes', athlete.id);
-    await setDoc(ref, athlete, { merge: true });
+    // Strip id from doc body - the doc path IS the id (Opus fix)
+    const { id, ...dataToSave } = athlete;
+    if (!id) { console.warn('saveAthleteToFirestore: no id, skipping'); return; }
+    await setDoc(doc(db, 'athletes', id), dataToSave, { merge: true });
   } catch(e) {
     console.error('Firestore save error:', e);
-    saveAppState(); // fallback to localStorage
+    saveAppState();
   }
 }
 
