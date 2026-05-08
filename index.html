@@ -1342,7 +1342,7 @@ function renderManageTab() {
     + '<button class="btn primary" data-aid="' + a.id + '" onclick="saveAthleteEdits(this.dataset.aid)">Save changes</button>'
     + '<button class="btn" data-aid="' + a.id + '" onclick="enterEditMode(this.dataset.aid)">Edit plan</button>'
     + '<button class="btn danger" data-aid="' + a.id + '" onclick="deleteAthlete(this.dataset.aid)">Delete</button>'
-    + + '<div class="manage-field" style="border-top:0.5px solid var(--border);padding-top:12px;margin-top:4px"><label>Current plan</label><div style="font-size:13px;font-weight:500">' + (a.plans && a.plans[0] ? a.plans[0].name : 'No plan loaded') + '</div></div>'
+    +  '<div class="manage-field" style="border-top:0.5px solid var(--border);padding-top:12px;margin-top:4px"><label>Current plan</label><div style="font-size:13px;font-weight:500">' + (a.plans && a.plans[0] ? a.plans[0].name : 'No plan loaded') + '</div></div>'
     + '</div></div>';
 }
 
