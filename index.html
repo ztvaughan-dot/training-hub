@@ -1327,7 +1327,7 @@ function renderManageTab() {
     + '<div class="manage-card-header">'
     + '<div class="manage-avatar-lg" style="background:' + AVATAR_COLORS[ci] + ';color:' + AVATAR_TEXT[ci] + '">' + initials + '</div>'
     + '<div><div class="manage-name">' + a.name + '</div>'
-    + + '<div class="manage-meta">' + (sportLabels[a.sport]||'Training') + ' &middot; ' + (a.plans && a.plans[0] ? a.plans[0].name : 'No plan') + ' &middot; ' + done + '/' + workouts + ' workouts</div></div></div>'
+    + '<div class="manage-meta">' + (sportLabels[a.sport]||'Training') + ' &middot; ' + (a.plans && a.plans[0] ? a.plans[0].name : 'No plan') + ' &middot; ' + done + '/' + workouts + ' workouts</div></div></div>'
     + '<div class="manage-fields">'
     + '<div class="manage-field"><label>Name</label><input class="log-input" id="mname_' + a.id + '" value="' + a.name + '" style="margin:0"></div>'
     + '<div class="manage-field"><label>Sport</label><select class="log-input" id="msport_' + a.id + '" style="margin:0">' + sportOpts + '</select></div>'
