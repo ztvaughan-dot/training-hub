@@ -508,6 +508,7 @@ Sun — Recovery jog 30 min"></textarea>
       <div class="section-heading">Preview — parsed plan</div>
       <div id="importPreviewContent"></div>
       <div style="display:flex;gap:8px;margin-top:16px">
+        <input id="importStartDate" type="date" style="padding:8px 10px;border-radius:8px;border:0.5px solid rgba(0,0,0,0.2);background:var(--bg-primary);font-size:13px;color:var(--text-primary);font-family:var(--font);">
         <button class="btn primary" onclick="confirmImport()">Load this plan</button>
         <button class="btn" onclick="document.getElementById(&#39;importPreview&#39;).style.display=&#39;none&#39;">Cancel</button>
       </div>
@@ -1520,6 +1521,7 @@ function confirmImport() {
   a.planName = pendingImport.parsed.planName||pendingImport.planName;
   a.sport = pendingImport.parsed.sport||a.sport;
   a.completed = []; a.activities = []; a.skipped = [];
+  a.planStartDate = document.getElementById('importStartDate').value || null;
   saveCurrentAthleteToFirestore();
   document.getElementById('importPreview').style.display = 'none';
   renderHeaderForAthlete();
