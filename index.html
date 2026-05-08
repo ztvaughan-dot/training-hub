@@ -629,7 +629,6 @@ function loadAppState() {
     }
   } catch(e) {}
   appState.athletes.forEach(a => {
-    if (a.planStartDate === undefined) a.planStartDate = null;
     if (!a.skipped) a.skipped = [];
   });
 }
@@ -661,9 +660,7 @@ function defaultAthleteData(sport) {
     activities: [],
     completed: [],
     skipped: [],
-    weeks: [],
-    planStartDate: null,
-    planName: '',
+    plans: [],
     sport: sport || 'cycling',
     stravaClientId: null,
     stravaConnected: false,
@@ -703,7 +700,7 @@ function renderHeaderForAthlete() {
     return;
   }
   document.getElementById('headerName').textContent = a.name;
-  const planPart = a.planName ? ` · ${a.planName}` : ' · No plan yet';
+  const planPart = a.plans && a.plans[0] && a.plans[0].name ? ` · ${a.plans[0].name}` : ' · No plan yet';
   const sportLabels = {running:'Running',cycling:'Cycling / MTB',triathlon:'Triathlon',swimming:'Swimming',other:'Sport'};
   document.getElementById('headerSub').textContent = (sportLabels[a.sport] || 'Training') + planPart;
 }
@@ -767,13 +764,14 @@ function buildPlan() {
     el.innerHTML = `<div class="no-plan"><div class="no-plan-icon">👤</div><h2>No athlete selected</h2><p>Create an athlete profile to get started tracking your training.</p><button class="btn primary" onclick="openNewAthleteModal()">Create athlete</button></div>`;
     return;
   }
-  if (!a.weeks || a.weeks.length === 0) {
+  if (!a.plans || a.plans.length === 0 || !a.plans[0].weeks || a.plans[0].weeks.length === 0) {
     el.innerHTML = `<div class="no-plan"><div class="no-plan-icon">📋</div><h2>No plan yet</h2><p>Import any training plan — paste text from a coach, website, or write your own — and the AI will structure it into this calendar.</p><button class="btn primary" onclick="showPage('import', document.querySelectorAll('.nav-btn')[3])">Import a plan</button></div>`;
     return;
   }
   let html = '';
   let lastPhase = null;
-  a.weeks.forEach((week, wi) => {
+  const weeks = a.plans[0].weeks;
+  weeks.forEach((week, wi) => {
     if (week.phase !== lastPhase) {
       const p = week.phaseInfo || {label:'Phase', title: week.phase || '', weeks:'', pill:'#D3D1C7', pillText:'#444441'};
       html += `<div class="phase-header"><span class="phase-pill" style="background:${p.pill};color:${p.pillText}">${p.label||'Phase'}</span><span class="phase-title">${p.title||''}</span><span class="phase-weeks">${p.weeks||''}</span></div>`;
@@ -785,9 +783,9 @@ function buildPlan() {
       const done = a.completed.includes(key);
       const skipped = a.skipped && a.skipped.includes(key);
       let dateStr = '', cellClass = '', beforeStart = false;
-      if (a.planStartDate) {
+      if (a.plans[0].startDate) {
         const DAY_OFFSETS = {mon:0,tue:1,wed:2,thu:3,fri:4,sat:5,sun:6};
-        const startDate = new Date(a.planStartDate + 'T12:00:00');
+        const startDate = new Date(a.plans[0].startDate + 'T12:00:00');
         const startDow = (startDate.getDay() + 6) % 7;
         const dayName = (day.name||'mon').toLowerCase().slice(0,3);
         const dayDow = DAY_OFFSETS[dayName] !== undefined ? DAY_OFFSETS[dayName] : di;
@@ -826,8 +824,8 @@ function buildPlan() {
 // ─── MODAL ───────────────────────────────────────────────────────────────────
 function openDay(wi, di) {
   const a = currentAthlete();
-  if (!a || !a.weeks[wi]) return;
-  const week = a.weeks[wi];
+  if (!a || !a.plans || !a.plans[0] || !a.plans[0].weeks[wi]) return;
+  const week = a.plans[0].weeks[wi];
   const day = week.days[di];
   const key = `w${wi}d${di}`;
   const wo = day.workout || null;
@@ -1034,8 +1032,9 @@ function updateMetrics() {
   const avgPwrN = withPwr.length ? Math.round(withPwr.reduce((s,act)=>s+parseFloat(act.pwr),0)/withPwr.length) : null;
   const avgHR = withHR.length ? Math.round(withHR.reduce((s,act)=>s+parseInt(act.hr),0)/withHR.length) : null;
   const totalTSS = acts.reduce((s,act)=>s+(act.tss||0),0);
-  const totalWeeks = a.weeks ? a.weeks.length : 0;
-  const totalWorkouts = a.weeks ? a.weeks.reduce((s,w)=>s+w.days.filter(d=>d.type!=='rest').length, 0) : 0;
+  const weeks = a.plans && a.plans[0] ? a.plans[0].weeks : [];
+  const totalWeeks = weeks.length;
+  const totalWorkouts = weeks.reduce((s,w)=>s+w.days.filter(d=>d.type!=='rest').length, 0);
   const pwrLabel = a.sport === 'running' ? 'Avg pace' : 'Avg power';
   const pwrVal = avgPwrN ? (a.sport==='running' ? withPwr[withPwr.length-1].pwr : avgPwrN+'w') : '—';
 
@@ -1126,7 +1125,7 @@ function undoEdit() {
   if (!editHistory.length) return;
   const a = currentAthlete();
   if (!a) return;
-  a.weeks = editHistory.pop();
+  if (a.plans && a.plans[0]) a.plans[0].weeks = editHistory.pop();
   saveCurrentAthleteToFirestore();
   updateUndoBtn();
   buildPlan();
@@ -1165,13 +1164,13 @@ function onDrop(e, targetKey) {
   if (!src || !tgt) return;
   var swi = parseInt(src[1]), sdi = parseInt(src[2]);
   var twi = parseInt(tgt[1]), tdi = parseInt(tgt[2]);
-  pushHistory(deepClone(a.weeks));
-  var srcDay = a.weeks[swi].days[sdi];
-  var tgtDay = a.weeks[twi].days[tdi];
+  pushHistory(deepClone(a.plans[0].weeks));
+  var srcDay = a.plans[0].weeks[swi].days[sdi];
+  var tgtDay = a.plans[0].weeks[twi].days[tdi];
   var srcName = srcDay.name, tgtName = tgtDay.name;
   var srcClone = deepClone(srcDay), tgtClone = deepClone(tgtDay);
-  a.weeks[swi].days[sdi] = Object.assign(tgtClone, {name: srcName});
-  a.weeks[twi].days[tdi] = Object.assign(srcClone, {name: tgtName});
+  a.plans[0].weeks[swi].days[sdi] = Object.assign(tgtClone, {name: srcName});
+  a.plans[0].weeks[twi].days[tdi] = Object.assign(srcClone, {name: tgtName});
   saveCurrentAthleteToFirestore();
   dragSourceKey = null;
   buildPlan();
@@ -1231,8 +1230,8 @@ function toggleBlocksSection() {
 
 function openEditDay(wi, di) {
   var a = currentAthlete();
-  if (!a || !a.weeks[wi]) return;
-  var day = a.weeks[wi].days[di];
+  if (!a || !a.plans || !a.plans[0] || !a.plans[0].weeks[wi]) return;
+  var day = a.plans[0].weeks[wi].days[di];
   editingKey = 'w' + wi + 'd' + di;
   editBlocks = day.workout && day.workout.blocks ? deepClone(day.workout.blocks) : [];
   var tip = day.workout && day.workout.tip ? day.workout.tip : '';
@@ -1283,8 +1282,8 @@ function openEditDay(wi, di) {
 function saveEditDay(wi, di) {
   var a = currentAthlete();
   if (!a) return;
-  pushHistory(deepClone(a.weeks));
-  var day = a.weeks[wi].days[di];
+  pushHistory(deepClone(a.plans[0].weeks));
+  var day = a.plans[0].weeks[wi].days[di];
   day.type = document.getElementById('edit_type').value;
   day.title = document.getElementById('edit_title').value;
   day.detail = document.getElementById('edit_detail').value;
@@ -1315,7 +1314,8 @@ function renderManageTab() {
   var ci = a.colorIdx || 0;
   var initials = a.name.split(' ').map(function(w){return w[0];}).join('').toUpperCase().slice(0,2);
   var sportLabels = {running:'Running',cycling:'Cycling / MTB',triathlon:'Triathlon',swimming:'Swimming',other:'Other'};
-  var workouts = a.weeks ? a.weeks.reduce(function(s,w){return s+w.days.filter(function(d){return d.type!=='rest';}).length;},0) : 0;
+  var weeks = a.plans && a.plans[0] ? a.plans[0].weeks : [];
+  var workouts = weeks.reduce(function(s,w){return s+w.days.filter(function(d){return d.type!=='rest';}).length;},0);
   var done = a.completed ? a.completed.length : 0;
   var colorSwatches = AVATAR_COLORS.map(function(c,i){
     return '<div data-id="' + a.id + '" data-ci="' + i + '" onclick="setAthleteColorEl(this)" style="width:24px;height:24px;border-radius:50%;background:' + c + ';cursor:pointer;border:2px solid ' + (i===ci?'var(--text-primary)':'transparent') + ';transition:transform 0.1s" onmouseover="this.style.transform=\'scale(1.15)\'" onmouseout="this.style.transform=\'scale(1)\'"></div>';
@@ -1328,14 +1328,14 @@ function renderManageTab() {
     + '<div class="manage-card-header">'
     + '<div class="manage-avatar-lg" style="background:' + AVATAR_COLORS[ci] + ';color:' + AVATAR_TEXT[ci] + '">' + initials + '</div>'
     + '<div><div class="manage-name">' + a.name + '</div>'
-    + '<div class="manage-meta">' + (sportLabels[a.sport]||'Training') + ' &middot; ' + (a.planName||'No plan') + ' &middot; ' + done + '/' + workouts + ' workouts</div></div></div>'
+    + '<div class="manage-meta">' + (sportLabels[a.sport]||'Training') + ' &middot; ' + (a.plans && a.plans[0] ? a.plans[0].name : 'No plan') + ' &middot; ' + done + '/' + workouts + ' workouts</div></div></div>'
     + '<div class="manage-fields">'
     + '<div class="manage-field"><label>Name</label><input class="log-input" id="mname_' + a.id + '" value="' + a.name + '" style="margin:0"></div>'
     + '<div class="manage-field"><label>Sport</label><select class="log-input" id="msport_' + a.id + '" style="margin:0">' + sportOpts + '</select></div>'
     + '<div class="manage-field"><label>Plan start date</label>'
     + '<div style="display:flex;gap:6px;align-items:center">'
-    + '<input id="mstart_' + a.id + '" type="date" value="' + (a.planStartDate||'') + '" onchange="previewStartDate(this.dataset.aid,this.value)" data-aid="' + a.id + '" style="flex:1;padding:8px 10px;border-radius:var(--radius);border:0.5px solid var(--border-md);background:var(--bg-primary);font-size:13px;color:var(--text-primary);font-family:var(--font);">'
-    + '<button class="btn" data-aid="' + a.id + '" onclick="setStartToday(this.dataset.aid)" style="white-space:nowrap;font-size:11px">Set to today</button>'
+    + '<input id="mstart_' + a.id + '" type="date" value="' + (a.plans && a.plans[0] ? a.plans[0].startDate||'' : '') + '" onchange="previewStartDate(this.dataset.aid,this.value)" data-aid="' + a.id + '" style="flex:1;padding:8px 10px;border-radius:var(--radius);border:0.5px solid var(--border-md);background:var(--bg-primary);font-size:13px;color:var(--text-primary);font-family:var(--font);">'
+        + '<button class="btn" data-aid="' + a.id + '" onclick="setStartToday(this.dataset.aid)" style="white-space:nowrap;font-size:11px">Set to today</button>'
     + '</div></div>'
     + '<div class="manage-field"><label>Avatar color</label><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">' + colorSwatches + '</div></div>'
     + '</div>'
@@ -1343,7 +1343,7 @@ function renderManageTab() {
     + '<button class="btn primary" data-aid="' + a.id + '" onclick="saveAthleteEdits(this.dataset.aid)">Save changes</button>'
     + '<button class="btn" data-aid="' + a.id + '" onclick="enterEditMode(this.dataset.aid)">Edit plan</button>'
     + '<button class="btn danger" data-aid="' + a.id + '" onclick="deleteAthlete(this.dataset.aid)">Delete</button>'
-    + '<div class="manage-field" style="border-top:0.5px solid var(--border);padding-top:12px;margin-top:4px"><label>Current plan</label><div style="font-size:13px;font-weight:500">' + (a.planName || 'No plan loaded') + '</div></div>'
+    +  '<div class="manage-field" style="border-top:0.5px solid var(--border);padding-top:12px;margin-top:4px"><label>Current plan</label><div style="font-size:13px;font-weight:500">' + (a.plans && a.plans[0] ? a.plans[0].name : 'No plan loaded') + '</div></div>'
     + '</div></div>';
 }
 
@@ -1372,7 +1372,7 @@ function setStartToday(id) {
 function previewStartDate(id, value) {
   var a = appState.athletes.find(function(x){ return x.id === id; });
   if (!a) return;
-  a.planStartDate = value || null;
+  if (a.plans && a.plans[0]) a.plans[0].startDate = value || null;
   if (appState.currentAthleteId === id) buildPlan();
   // Persist on date change
   if (window._fbUser) saveAthleteToFirestore(a);
@@ -1389,7 +1389,7 @@ function saveAthleteEdits(id) {
   var pendingColor = card.dataset.pendingColor;
   a.name = name;
   a.sport = sport;
-  a.planStartDate = startDate || null;
+  if (a.plans && a.plans[0]) a.plans[0].startDate = startDate || null;
   if (pendingColor !== undefined) a.colorIdx = parseInt(pendingColor);
   if (window._fbUser) saveAthleteToFirestore(a);
   renderAthleteBar();
@@ -1517,9 +1517,15 @@ async function importPlan() {
 function confirmImport() {
   var a = currentAthlete();
   if (!a||!pendingImport) return;
-  a.weeks = pendingImport.parsed.weeks;
-  a.planName = pendingImport.parsed.planName||pendingImport.planName;
-  a.sport = pendingImport.parsed.sport||a.sport;
+  if (!a.plans) a.plans = [];
+  const planId = 'plan_' + Date.now();
+  a.plans = [{
+    id: planId,
+    name: pendingImport.parsed.planName || pendingImport.planName || 'Training Plan',
+    startDate: document.getElementById('importStartDate').value || null,
+    weeks: pendingImport.parsed.weeks
+  }];
+  a.sport = pendingImport.parsed.sport || a.sport;
   a.completed = []; a.activities = []; a.skipped = [];
   a.planStartDate = document.getElementById('importStartDate').value || null;
   saveCurrentAthleteToFirestore();
@@ -1653,6 +1659,18 @@ window.onFirebaseSignOut = function() {
 function athleteFromDoc(d) {
   const data = d.data();
   delete data.id; // belt-and-suspenders: drop any stale id field in the body
+  // Migrate old single-plan format to plans array
+  if (!data.plans) {
+    data.plans = [{
+      id: 'plan_legacy',
+      name: data.planName || 'Training Plan',
+      startDate: data.planStartDate || null,
+      weeks: data.weeks || []
+    }];
+    delete data.weeks;
+    delete data.planName;
+    delete data.planStartDate;
+  }
   return Object.assign(data, { id: d.id });
 }
 
